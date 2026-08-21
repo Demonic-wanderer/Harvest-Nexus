@@ -119,6 +119,17 @@ class T {
       'confidence': ['Confidence', 'विश्वास स्तर'],
       'scanLeaf': ['Scan Leaf', 'पत्ती स्कैन करें'],
       'uploadLeaf': ['Upload Leaf Image', 'पत्ती की तस्वीर अपलोड करें'],
+      'demoPresets': ['1-Tap Demo Leaf Presets', '1-क्लिक डेमो पत्ती परीक्षण'],
+      'earlyBlightPreset': ['Early Blight (High)', 'अगेती झुलसा'],
+      'lateBlightPreset': ['Late Blight (Critical)', 'पछेती झुलसा'],
+      'bacterialSpotPreset': ['Bacterial Spot', 'जीवाणु धब्बा'],
+      'healthyPreset': ['Healthy Leaf', 'स्वस्थ पत्ती'],
+      'unclearPreset': ['Blurry / Unknown Test', 'धुंधली / अज्ञात छवि'],
+      'topCandidates': ['Pathology Distribution', 'रोग संभावना विवरण'],
+      'actionableTreatment': ['ICAR Treatment & Action Plan', 'ICAR उपचार एवं कार्य योजना'],
+      'weatherSafetyGuard': ['Weather & Spray Guardrail', 'मौसम व छिड़काव सुरक्षा'],
+      'askKisanAI': ['Ask Kisan AI About Diagnosis', 'किसान AI से इस रोग पर पूछें'],
+      'yieldImpact': ['Harvest Safeguard', 'संभावित उत्पादन सुरक्षा'],
       'currentPrice': ['Current Price', 'वर्तमान भाव'],
       'trend': ['Trend', 'रुझान'],
       'demand': ['Demand', 'मांग'],
@@ -873,6 +884,100 @@ class InfoCard extends StatelessWidget {
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(15),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 25),
+
+            SectionTitle(
+              title: T.get('disease', hindi),
+            ),
+
+            const SizedBox(height: 10),
+
+            DiseaseSummaryCard(hindi: hindi),
+
+            const SizedBox(height: 25),
+
+            SectionTitle(
+              title: T.get('market', hindi),
+            ),
+
+            const SizedBox(height: 10),
+
+            MarketSummaryCard(hindi: hindi),
+
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// ACTION CARD
+// ============================================================
+
+class ActionCard extends StatelessWidget {
+  final String icon;
+  final String title;
+  final String subtitle;
+
+  const ActionCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 0,
+      child: ListTile(
+        leading: Text(
+          icon,
+          style: const TextStyle(fontSize: 26),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+        subtitle: Text(subtitle),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// INFO CARD
+// ============================================================
+
+class InfoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const InfoCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(15),
         child: Column(
           children: [
             Icon(
@@ -927,30 +1032,23 @@ class DiseaseSummaryCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
           children: [
-            Container(
-              height: 70,
-              width: 70,
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const Center(child: Text('🍅', style: TextStyle(fontSize: 38))),
+            Icon(
+              Icons.bug_report,
+              color: const Color(0xFF2E7D32),
+              size: 30,
             ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(T.get('diseaseDetected', hindi), style: const TextStyle(color: Colors.grey)),
-                  Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(
-                    '${T.get('confidence', hindi)}: ${confidence ?? '--'}%',
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 8),
+            Column(
+              children: [
+                Text(T.get('diseaseDetected', hindi), style: const TextStyle(color: Colors.grey)),
+                Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  '${T.get('confidence', hindi)}: ${confidence ?? '--'}%',
+                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ],
         ),
@@ -1031,20 +1129,32 @@ class DiseaseScreen extends StatefulWidget {
 class _DiseaseScreenState extends State<DiseaseScreen> {
   final picker = ImagePicker();
   Uint8List? previewBytes;
+  String? currentPresetName;
 
   Future<void> _pick(ImageSource source) async {
     final file = await picker.pickImage(source: source, imageQuality: 85);
     if (file == null) return;
     final bytes = await file.readAsBytes();
-    setState(() => previewBytes = bytes);
+    setState(() {
+      previewBytes = bytes;
+      currentPresetName = null;
+    });
     final session = context.read<SessionController>();
     final ok = await session.scanLeaf(file.name, bytes, hindi: widget.hindi);
     if (!mounted) return;
-    if (!ok) {
+    if (!ok && session.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_scanError(session.error, widget.hindi))),
       );
     }
+  }
+
+  void _loadPreset(String key, String displayName) {
+    setState(() {
+      previewBytes = null;
+      currentPresetName = displayName;
+    });
+    context.read<SessionController>().loadDemoPreset(key, hindi: widget.hindi);
   }
 
   String _scanError(String? error, bool hindi) {
@@ -1058,72 +1168,8 @@ class _DiseaseScreenState extends State<DiseaseScreen> {
     if (value.contains('invalid_image') || value.contains('readable leaf image')) {
       return hindi ? 'तस्वीर पढ़ी नहीं जा सकी। साफ पत्ती की तस्वीर लेकर फिर कोशिश करें।' : 'The image could not be read. Retake a clear leaf photo and try again.';
     }
-    if (value.contains('model_unavailable')) {
-      return hindi ? 'रोग पहचान मॉडल अभी उपलब्ध नहीं है।' : 'The disease model is not available yet.';
-    }
     return hindi ? 'स्कैन पूरा नहीं हो सका। कृपया फिर कोशिश करें।' : 'Scan could not be completed. Please try again.';
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final hindi = widget.hindi;
-    final session = context.watch<SessionController>();
-    final result = session.scanResult ?? session.disease;
-    final confidence = (result?['confidence'] is num)
-        ? (result!['confidence'] as num) / ((result['confidence'] as num) > 1 ? 100 : 1)
-        : 0.0;
-    final treatments = result?['treatments'];
-
-    return Scaffold(
-      appBar: AppBar(title: Text(T.get('disease', hindi))),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              height: 230,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: Colors.green.shade200),
-                image: previewBytes != null
-                    ? DecorationImage(image: MemoryImage(previewBytes!), fit: BoxFit.cover)
-                    : null,
-              ),
-              child: previewBytes == null
-                  ? const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.camera_alt_outlined, size: 70, color: Color(0xFF2E7D32)),
-                        SizedBox(height: 15),
-                        Text('📷', style: TextStyle(fontSize: 35)),
-                      ],
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton.icon(
-                onPressed: session.busy ? null : () => _pick(ImageSource.camera),
-                icon: const Icon(Icons.camera_alt),
-                label: Text(T.get('scanLeaf', hindi)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: session.busy ? null : () => _pick(ImageSource.gallery),
-              icon: const Icon(Icons.upload),
-              label: Text(T.get('uploadLeaf', hindi)),
-            ),
-            const SizedBox(height: 30),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(T.get('diseaseDetected', hindi), style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 5),

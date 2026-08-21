@@ -79,6 +79,35 @@ class ForgeApi {
     return _parse(response);
   }
 
+  Future<Map<String, dynamic>> predictLeaf({
+    required String filename,
+    required List<int> bytes,
+  }) async {
+    final uri = Uri.parse('${AppConfig.oracleBaseUrl}/predict-upload');
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode >= 400) {
+      String message = 'Disease prediction failed (${response.statusCode})';
+      String? code;
+      try {
+        final body = jsonDecode(response.body);
+        final detail = body is Map ? body['detail'] : null;
+        if (detail is Map) {
+          message = detail['message']?.toString() ?? message;
+          code = detail['code']?.toString();
+        } else if (detail != null) {
+          message = detail.toString();
+        }
+      } catch (_) {}
+      throw ApiException(message, code: code);
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic>) return decoded;
+    throw ApiException('Unexpected response from Oracle');
+  }
+
   Future<Map<String, dynamic>> assessLeaf({
     required String filename,
     required List<int> bytes,
@@ -87,6 +116,9 @@ class ForgeApi {
     required String farmId,
     required double landSizeAcres,
     required bool hindi,
+    double soilMoisture = 30.0,
+    double airTemperature = 30.0,
+    double humidity = 60.0,
   }) async {
     final uri = Uri.parse('${AppConfig.oracleBaseUrl}/assess-upload');
     final request = http.MultipartRequest('POST', uri)
@@ -96,14 +128,13 @@ class ForgeApi {
         'crop_id': cropId,
         'farm_id': farmId,
         'land_size_acres': '$landSizeAcres',
-        // These demo-safe defaults make the scan useful before a sensor is paired.
-        'soil_moisture': '30',
-        'air_temperature': '30',
-        'humidity': '60',
+        'soil_moisture': '$soilMoisture',
+        'air_temperature': '$airTemperature',
+        'humidity': '$humidity',
         'language': hindi ? 'hi' : 'en',
-        'persist_to_forge': 'true',
+        'persist_to_forge': 'false',
       });
-    final streamed = await _client.send(request);
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 30));
     final response = await http.Response.fromStream(streamed);
     if (response.statusCode >= 400) {
       String message = 'Oracle assessment failed (${response.statusCode})';

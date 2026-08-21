@@ -86,11 +86,11 @@ def load_model():
     return _model, _class_names
 
 
-def _pack_result(class_name, confidence, source):
+def _pack_result(class_name, confidence, source, top_predictions=None):
     conf_val = round(float(confidence), 2)
     severity = severity_from_prediction(class_name, conf_val)
     is_confident = conf_val >= 60.0
-    
+
     diagnostic_alert = None
     if not is_confident:
         diagnostic_alert = (
@@ -107,6 +107,14 @@ def _pack_result(class_name, confidence, source):
         "severity": severity,
         "treatments": treatments_for(class_name, conf_val),
         "treatments_hi": treatments_for_hi(class_name, conf_val),
+        "top_predictions": top_predictions or [
+            {
+                "disease": class_name,
+                "display_name": display_name(class_name),
+                "display_name_hi": display_name_hi(class_name),
+                "confidence": conf_val,
+            }
+        ],
         "diagnostic_alert": diagnostic_alert,
         "diagnostic_alert_hi": (
             "विश्वास स्तर 60% से कम है। साफ प्राकृतिक रोशनी में पत्ती की तस्वीर लेकर फिर प्रयास करें या कृषि सलाहकार से संपर्क करें।"
@@ -139,11 +147,24 @@ def predict_disease(image_path):
     with torch.no_grad():
         output = model_loaded(tensor)
 
-    probabilities = torch.softmax(output, dim=1)
-    prediction = torch.argmax(probabilities, dim=1).item()
+    probabilities = torch.softmax(output, dim=1)[0]
+    
+    # Calculate top-k predictions for transparent candidate breakdown
+    top_k_indices = torch.topk(probabilities, k=min(3, len(class_names_loaded))).indices.tolist()
+    top_predictions = [
+        {
+            "disease": class_names_loaded[idx],
+            "display_name": display_name(class_names_loaded[idx]),
+            "display_name_hi": display_name_hi(class_names_loaded[idx]),
+            "confidence": round(probabilities[idx].item() * 100, 2),
+        }
+        for idx in top_k_indices
+    ]
+
+    prediction = top_k_indices[0]
     disease = class_names_loaded[prediction]
-    confidence = probabilities[0][prediction].item() * 100
-    return _pack_result(disease, confidence, "mobilenetv2_plantvillage")
+    confidence = probabilities[prediction].item() * 100
+    return _pack_result(disease, confidence, "mobilenetv2_plantvillage", top_predictions=top_predictions)
 
 
 def detect_disease(image_path):
@@ -163,7 +184,9 @@ if __name__ == "__main__":
         print("Class:", result["disease"])
         print("Confidence:", result["confidence"], "%")
         print("Severity:", result["severity"])
-        print("Source:", result["source"])
+        print("Top Candidates:")
+        for cand in result.get("top_predictions", []):
+            print(f" - {cand['display_name']} ({cand['confidence']}%)")
         print("Treatments:")
         for item in result["treatments"]:
             print(" -", item)

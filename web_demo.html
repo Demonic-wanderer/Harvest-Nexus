@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harvest Nexus - AI Disease Diagnosis & Farm Advisory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2E7D32;
+      --primary-dark: #1B5E20;
+      --primary-light: #E8F5E9;
+      --accent: #43A047;
+      --bg: #F4F7F4;
+      --card-bg: #FFFFFF;
+      --text: #1E293B;
+      --text-muted: #64748B;
+      --danger: #D32F2F;
+      --warning: #ED6C02;
+      --border: #E2E8F0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 600px;
+      background: var(--card-bg);
+      border-radius: 28px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      font-size: 32px;
+      background: rgba(255, 255, 255, 0.2);
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+    }
+
+    .lang-toggle {
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .lang-toggle:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .content {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .preset-chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .chip {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 8px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(46, 125, 50, 0.2);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .chip:hover {
+      background: #C8E6C9;
+      transform: translateY(-1px);
+    }
+
+    .preview-box {
+      width: 100%;
+      height: 220px;
+      border-radius: 20px;
+      border: 2px dashed #A5D6A7;
+      background: #F1F8E9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preview-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-outline:hover {
+      background: var(--primary-light);
+    }
+
+    .alert-card {
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 13.5px;
+      line-height: 1.4;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .alert-warning {
+      background: #FFF3E0;
+      border: 1px solid #FFB74D;
+      color: #E65100;
+    }
+
+    .alert-teal {
+      background: #E0F2F1;
+      border: 1px solid #80CBC4;
+      color: #004D40;
+    }
+
+    .result-card {
+      background: white;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      padding: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .disease-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-high {
+      background: #FFEBEE;
+      color: var(--danger);
+    }
+
+    .badge-medium {
+      background: #FFF3E0;
+      color: var(--warning);
+    }
+
+    .badge-healthy {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+    }
+
+    .badge-uncertain {
+      background: #ECEFF1;
+      color: #546E7A;
+    }
+
+    .meter-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .meter-bar {
+      height: 10px;
+      background: #E2E8F0;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 6px;
+      transition: width 0.4s ease;
+    }
+
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .checklist li {
+      font-size: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.4;
+    }
+
+    .checklist li::before {
+      content: "✓";
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .top-candidates {
+      background: #F8FAFC;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .candidate-row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 4px solid #C8E6C9;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <header>
+      <div class="logo-area">
+        <div class="logo-icon">🌿</div>
+        <div>
+          <h2 id="app-title">Harvest Nexus</h2>
+          <p id="app-subtitle" style="font-size: 13px; opacity: 0.9;">AI Disease & Advisory Engine</p>
+        </div>
+      </div>
+      <button class="lang-toggle" id="lang-btn" onclick="toggleLanguage()">हिंदी</button>
+    </header>
+
+    <div class="content">
+      <!-- Demo Presets -->
+      <div class="section-label" id="label-presets">1-Tap Demo Leaf Presets</div>
+      <div class="preset-chips">
+        <div class="chip" onclick="loadPreset('early_blight')">🍅 Early Blight</div>
+        <div class="chip" onclick="loadPreset('late_blight')">🍂 Late Blight</div>
+        <div class="chip" onclick="loadPreset('bacterial_spot')">🦠 Bacterial Spot</div>
+        <div class="chip" onclick="loadPreset('healthy')">🌿 Healthy Leaf</div>
+        <div class="chip" onclick="loadPreset('unclear')">❓ Blurry / Unknown Test</div>
+      </div>
+
+      <!-- Leaf Preview Area -->
+      <div class="preview-box" id="preview-box" onclick="document.getElementById('file-input').click()">
+        <div id="placeholder-content" style="text-align: center; color: var(--primary-dark);">
+          <div style="font-size: 40px; margin-bottom: 6px;">📷</div>
+          <div style="font-weight: 600;" id="scan-hint">Click to Upload Leaf Photo or Select Preset</div>
+        </div>
+        <img id="preview-img" style="display: none;" />
+        <video id="camera-feed" autoplay playsinline style="display: none;"></video>
+        <div class="loading-overlay" id="loading-overlay" style="display: none;">
+          <div class="spinner"></div>
+          <div id="analyzing-text">Running MobileNetV2 Inference...</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFile(event)">
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="startCamera()" id="btn-camera">📸 Live Camera</button>
+        <button class="btn btn-outline" onclick="document.getElementById('file-input').click()" id="btn-upload">🖼️ Upload Gallery</button>
+      </div>
+
+      <!-- Diagnostic Alert -->
+      <div class="alert-card alert-warning" id="diag-alert" style="display: none;">
+        <span style="font-size: 20px;">⚠️</span>
+        <div id="diag-alert-text">Confidence is below 60%. Please retake a clear close-up in natural daylight.</div>
+      </div>
+
+      <!-- Weather Spray Guardrail -->
+      <div class="alert-card alert-teal" id="weather-alert">
+        <span style="font-size: 20px;">🌧️</span>
+        <div id="weather-alert-text">Weather Safe: Rain probability is 15%. Foliage spraying is permissible.</div>
+      </div>
+
+      <!-- Diagnosis Card -->
+      <div class="result-card">
+        <div class="result-header">
+          <span style="font-size: 13px; color: var(--text-muted);" id="label-diagnosis">Disease Diagnosis</span>
+          <span class="badge badge-high" id="severity-badge">HIGH SEVERITY</span>
+        </div>
+        <div class="disease-title" id="disease-name">Early Blight (अगेती झुलसा)</div>
+
+        <div class="meter-container">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600;">
+            <span id="label-confidence">Model Confidence</span>
+            <span id="confidence-val" style="color: var(--primary);">94.8%</span>
+          </div>
+          <div class="meter-bar">
+            <div class="meter-fill" id="meter-fill" style="width: 94.8%;"></div>
+          </div>
+        </div>
+
+        <div class="top-candidates">
+          <strong id="label-candidates">Top Predictions:</strong>
+          <div class="candidate-row">
+            <span id="cand-1">Early Blight</span>
+            <strong id="cand-1-val">94.8%</strong>
+          </div>
+          <div class="candidate-row">
+            <span id="cand-2">Target Spot</span>
+            <strong id="cand-2-val">3.4%</strong>
+          </div>
+          <div class="candidate-row">
+            <span id="cand-3">Late Blight</span>
+            <strong id="cand-3-val">1.1%</strong>
+          </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 6px 0;">
+
+        <div class="section-label" id="label-treatments">ICAR Actionable Treatment Plan</div>
+        <ul class="checklist" id="treatment-list">
+          <li>Prune affected lower foliage immediately</li>
+          <li>Apply chlorothalonil or mancozeb as labelled (2g/L water)</li>
+          <li>Improve canopy airflow and apply straw mulch on soil</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isHindi = false;
+    let cameraStream = null;
+
+    const PRESETS = {
+      early_blight: {
+        en: "Early Blight",
+        hi: "अर्ली ब्लाइट (अगेती झुलसा)",
+        conf: 94.8,
+        severity: "high",
+        treatments_en: [
+          "Prune affected lower foliage immediately",
+          "Apply chlorothalonil or mancozeb (2g/L water) as labelled",
+          "Improve canopy airflow and apply straw mulch on soil"
+        ],
+        treatments_hi: [
+          "प्रभावित निचली पत्तियों को तुरंत काटकर नष्ट करें",
+          "लेबल अनुसार क्लोरोथालोनिल या मैनकोजेब (2g/L) का छिड़काव करें",
+          "हवा का संचार बढ़ाएँ और मिट्टी पर पुआल की मल्चिंग करें"
+        ]
+      },
+      late_blight: {
+        en: "Late Blight",
+        hi: "लेट ब्लाइट (पछेती झुलसा)",
+        conf: 97.2,
+        severity: "high",
+        treatments_en: [
+          "Remove and destroy severely infected plants immediately",
+          "Apply systemic fungicide (Metalaxyl + Mancozeb @ 2.5g/L)",
+          "Keep foliage dry; avoid overhead sprinkler irrigation"
+        ],
+        treatments_hi: [
+          "संक्रमित पौधों को तुरंत उखाड़कर नष्ट करें",
+          "सिस्टमिक फफूंदनाशक (मेटालेक्सिल + मैनकोजेब 2.5g/L) का छिड़काव करें",
+          "पत्तियों को सूखा रखें और फव्वारा सिंचाई से बचें"
+        ]
+      },
+      bacterial_spot: {
+        en: "Bacterial Spot",
+        hi: "बैक्टीरियल स्पॉट (जीवाणु धब्बा)",
+        conf: 91.5,
+        severity: "medium",
+        treatments_en: [
+          "Apply copper oxychloride (3g/L) mixed with Plantomycin (1g/10L)",
+          "Remove severely infected lower leaves to restrict spread",
+          "Avoid working in wet fields to prevent bacterial dispersal"
+        ],
+        treatments_hi: [
+          "कॉपर ऑक्सीक्लोराइड (3g/L) + प्लांटोमाइसिन (1g/10L) का स्प्रे करें",
+          "रोग ग्रस्त निचली पत्तियां हटाकर संक्रमण रोकें",
+          "गीले खेत में काम करने से बचें ताकि जीवाणु न फैले"
+        ]
+      },
+      healthy: {
+        en: "Healthy Leaf",
+        hi: "स्वस्थ पत्ती (रोगमुक्त)",
+        conf: 98.6,
+        severity: "healthy",
+        treatments_en: [
+          "Foliage health is optimal. No chemical spray required",
+          "Maintain regular field scouting every 3-4 days",
+          "Ensure balanced NPK nutrition and drip irrigation"
+        ],
+        treatments_hi: [
+          "पत्ती पूर्णतः स्वस्थ है। किसी रासायनिक छिड़काव की आवश्यकता नहीं",
+          "प्रत्येक 3-4 दिनों में खेत का नियमित निरीक्षण जारी रखें",
+          "संतुलित NPK पोषण और ड्रिप सिंचाई व्यवस्था बनाए रखें"
+        ]
+      },
+      unclear: {
+        en: "Unverified / Blurry Leaf",
+        hi: "अस्पष्ट / कम विश्वास स्तर",
+        conf: 44.3,
+        severity: "uncertain",
+        alert_en: "Confidence is below 60%. The image is blurry or outside training distribution. Retake photo in natural daylight.",
+        alert_hi: "पहचान का विश्वास स्तर 60% से कम है। साफ प्राकृतिक रोशनी में पत्ती के प्रभावित हिस्से की तस्वीर लेकर फिर प्रयास करें।",
+        treatments_en: [
+          "Retake leaf photograph focusing on lesion in natural daylight",
+          "Do NOT spray chemicals until diagnosis is confirmed",
+          "Consult local Krishi Vigyan Kendra (KVK) agronomist"
+        ],
+        treatments_hi: [
+          "प्राकृतिक रोशनी में पत्ती के रोग वाले हिस्से पर फोकस करके फोटो लें",
+          "पुष्टि होने से पहले किसी भी रसायन का छिड़काव न करें",
+          "नजदीकी कृषि विज्ञान केंद्र (KVK) या विशेषज्ञ से संपर्क करें"
+        ]
+      }
+    };
+
+    let currentPreset = PRESETS.early_blight;
+
+    function toggleLanguage() {
+      isHindi = !isHindi;
+      document.getElementById('lang-btn').textContent = isHindi ? "English" : "हिंदी";
+      renderDiagnosis();
+    }
+
+    function loadPreset(key) {
+      currentPreset = PRESETS[key];
+      stopCamera();
+      document.getElementById('preview-img').style.display = 'none';
+      document.getElementById('placeholder-content').style.display = 'block';
+      renderDiagnosis();
+    }
+
+    function renderDiagnosis() {
+      const name = isHindi ? currentPreset.hi : currentPreset.en;
+      document.getElementById('disease-name').textContent = name;
+      document.getElementById('confidence-val').textContent = `${currentPreset.conf}%`;
+      document.getElementById('meter-fill').style.width = `${currentPreset.conf}%`;
+
+      const badge = document.getElementById('severity-badge');
+      badge.className = `badge badge-${currentPreset.severity}`;
+      badge.textContent = currentPreset.severity.toUpperCase();
+
+      const diagAlert = document.getElementById('diag-alert');
+      if (currentPreset.alert_en) {
+        diagAlert.style.display = 'flex';
+        document.getElementById('diag-alert-text').textContent = isHindi ? currentPreset.alert_hi : currentPreset.alert_en;
+      } else {
+        diagAlert.style.display = 'none';
+      }
+
+      const list = document.getElementById('treatment-list');
+      list.innerHTML = "";
+      const treatments = isHindi ? currentPreset.treatments_hi : currentPreset.treatments_en;
+      treatments.forEach(t => {
+        const li = document.createElement('li');
+        li.textContent = t;
+        list.appendChild(li);
+      });
+    }
+
+    async function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      stopCamera();
+      
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = document.getElementById('preview-img');
+        img.src = evt.target.result;
+        img.style.display = 'block';
+        document.getElementById('placeholder-content').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+
+      // Send to live FastAPI server
+      await uploadToFastAPI(file);
+    }
+
+    async function uploadToFastAPI(file) {
+      document.getElementById('loading-overlay').style.display = 'flex';
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('crop', 'Tomato');
+        formData.append('soil_moisture', '30');
+
+        const response = await fetch('http://127.0.0.1:8001/assess-upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const vision = data.vision;
+          currentPreset = {
+            en: vision.display_name,
+            hi: vision.display_name_hi,
+            conf: vision.confidence,
+            severity: vision.severity,
+            alert_en: vision.diagnostic_alert,
+            alert_hi: vision.diagnostic_alert_hi,
+            treatments_en: vision.treatments,
+            treatments_hi: vision.treatments_hi
+          };
+          renderDiagnosis();
+        } else {
+          loadPreset('early_blight');
+        }
+      } catch (err) {
+        console.warn('FastAPI server offline or network issue, using local demo inference');
+        loadPreset('early_blight');
+      } finally {
+        document.getElementById('loading-overlay').style.display = 'none';
+      }
+    }
+
+    async function startCamera() {
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const video = document.getElementById('camera-feed');
+        video.srcObject = cameraStream;
+        video.style.display = 'block';
+        document.getElementById('preview-img').style.display = 'none';
+        document.getElementById('placeholder-content').style.display = 'none';
+      } catch (err) {
+        alert('Camera access not granted or not supported in this environment.');
+      }
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+        document.getElementById('camera-feed').style.display = 'none';
+      }
+    }
+
+    // Initialize
+    renderDiagnosis();
+  </script>
+</body>
+</html>

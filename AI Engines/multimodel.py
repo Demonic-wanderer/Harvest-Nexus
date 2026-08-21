@@ -244,22 +244,21 @@ def analyze_multimodal(image_path, crop, growth_stage, soil_moisture, soil_tempe
             result["forge_error"] = str(exc)
 
     # Akasha's rule engine turns the same scan and sensor context into the
-    # dashboard advisory.  When farm_id is supplied it also persists that row.
-    if farm_id:
-        advisory = generate_advisory(AdvisoryRequest(
-            crop=crop,
-            crop_stage=growth_stage,
-            land_size_acres=land_size_acres or 1.0,
-            farm_id=farm_id,
-            crop_id=crop_id,
-            disease_id=disease_id,
-            persist_to_forge=persist_to_forge,
-            disease={"name": vision["disease"], "confidence": vision["confidence"], "severity": vision["severity"]},
-            soil={"moisture": soil_moisture, "ph": soil_ph, "nitrogen": nitrogen, "phosphorus": phosphorus, "potassium": potassium},
-            weather={"temperature": air_temperature or 30, "humidity": humidity or 60, "rain_probability": 0},
-        ))
-        result["advisory"] = advisory
-        result["advisory_forge_persisted"] = advisory.get("forge_persisted", False)
+    # dashboard advisory. When farm_id is supplied it also persists that row.
+    advisory = generate_advisory(AdvisoryRequest(
+        crop=crop,
+        crop_stage=growth_stage,
+        land_size_acres=land_size_acres or 1.0,
+        farm_id=farm_id,
+        crop_id=crop_id,
+        disease_id=disease_id,
+        persist_to_forge=persist_to_forge,
+        disease={"name": vision["disease"], "confidence": vision["confidence"], "severity": vision["severity"]},
+        soil={"moisture": soil_moisture, "ph": soil_ph, "nitrogen": nitrogen, "phosphorus": phosphorus, "potassium": potassium},
+        weather={"temperature": air_temperature or 30, "humidity": humidity or 60, "rain_probability": 0},
+    ))
+    result["advisory"] = advisory
+    result["advisory_forge_persisted"] = advisory.get("forge_persisted", False)
 
     return result
 
