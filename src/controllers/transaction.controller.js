@@ -4,8 +4,8 @@ const { success, error } = require('../utils/responseFormatter');
 
 async function createTransaction(req, res) {
   try {
-    const { farmer_id, buyer_id, crop_id, quantity_quintals, price_per_quintal } = req.body;
-    const txn = await Transaction.create({ farmer_id, buyer_id, crop_id, quantity_quintals, price_per_quintal });
+    const { farmer_id, buyer_id, crop_id, quantity_quintals, price_per_quintal, status } = req.body;
+    const txn = await Transaction.create({ farmer_id, buyer_id, crop_id, quantity_quintals, price_per_quintal, status });
     return success(res, { transaction: txn }, 'Transaction created', 201);
   } catch (err) {
     return error(res, err.message);

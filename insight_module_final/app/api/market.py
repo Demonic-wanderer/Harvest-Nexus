@@ -4,6 +4,7 @@ Note: this uses the SQLAlchemy models (app/models/db_models.py), separate
 from the sqlite-based CLI tool in app/main.py. Wire this up once you move
 the CLI's data into the shared Cloud Backend DB.
 """
+from db.database import get_db
 from fastapi import APIRouter, Depends
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -37,7 +38,7 @@ def _estimate_demand(trend: str) -> str:
 
 
 @router.post("/snapshot", response_model=MarketResponse)
-def market_snapshot(query: MarketQuery, db: Session = Depends()):
+def market_snapshot(query: MarketQuery, db: Session = Depends(get_db)):  # noqa: B008
     """
     Input: crop_type + region
     Output: current price, expected trend, demand indicator

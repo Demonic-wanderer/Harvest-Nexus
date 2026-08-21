@@ -10,14 +10,17 @@ const advisoryRoutes = require('./routes/advisory.routes');
 const marketRoutes = require('./routes/market.routes');
 const buyerRoutes = require('./routes/buyer.routes');
 const transactionRoutes = require('./routes/transaction.routes');
+const mandiRoutes = require('./routes/mandi.routes');
 
 const errorHandler = require('./middleware/errorHandler');
+const rateLimiter = require('./middleware/rateLimiter');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+app.use(rateLimiter);
 
 // Health check
 app.get('/', (req, res) => {
@@ -33,6 +36,7 @@ app.use('/api/advisory', advisoryRoutes);     // consumed by Akasha (Advisory)
 app.use('/api/market', marketRoutes);         // consumed by Insight (Market/Logistics)
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/transaction', transactionRoutes);
+app.use('/api/mandi', mandiRoutes);
 
 // 404 handler
 app.use((req, res) => {

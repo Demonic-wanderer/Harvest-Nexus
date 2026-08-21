@@ -18,8 +18,11 @@ const MarketData = {
     return result.rows[0];
   },
 
-  async findAll() {
-    const result = await db.query(`SELECT * FROM market_data ORDER BY recorded_at DESC`);
+  async findAll(limit = 20, offset = 0) {
+    const result = await db.query(
+      `SELECT * FROM market_data ORDER BY recorded_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
     return result.rows;
   },
 };

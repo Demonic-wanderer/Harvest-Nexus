@@ -13,8 +13,12 @@ async function createBuyer(req, res) {
 
 async function getAllBuyers(req, res) {
   try {
-    const buyers = await Buyer.findAll();
-    return success(res, { buyers });
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const page = parseInt(req.query.page, 10) || 1;
+    const offset = (page - 1) * limit;
+
+    const buyers = await Buyer.findAll(limit, offset);
+    return success(res, { buyers, page, limit });
   } catch (err) {
     return error(res, err.message);
   }

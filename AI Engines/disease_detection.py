@@ -1,9 +1,10 @@
+import os
+
 import torch
 from PIL import Image
-from torchvision import transforms, models
+from torchvision import models, transforms
 
-
-MODEL_FILE = "mobilenetv2_disease.pth"
+MODEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mobilenetv2_disease.pth")
 
 IMAGE_SIZE = 224
 
@@ -11,12 +12,6 @@ IMAGE_SIZE = 224
 device = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
-
-print("Using:", device)
-
-
-
-
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -30,74 +25,74 @@ transform = transforms.Compose([
 ])
 
 
-checkpoint = torch.load(
-    MODEL_FILE,
-    map_location=device
-)
-
-class_names = checkpoint["class_names"]
+_model = None
+_class_names = None
 
 
-model = models.mobilenet_v2(
-    weights=None
-)
+def load_model():
+    global _model, _class_names
+    if _model is not None:
+        return _model, _class_names
 
+    if not os.path.exists(MODEL_FILE):
+        raise FileNotFoundError(
+            f"Model file '{MODEL_FILE}' not found. Please ensure it is present in the working directory before running inference."
+        )
 
+    print("Loading model onto:", device)
+    checkpoint = torch.load(
+        MODEL_FILE,
+        map_location=device
+    )
 
-model.classifier[1] = torch.nn.Linear(
-    model.last_channel,
-    len(class_names)
-)
+    _class_names = checkpoint["class_names"]
 
+    model_loaded = models.mobilenet_v2(
+        weights=None
+    )
 
+    model_loaded.classifier[1] = torch.nn.Linear(
+        model_loaded.last_channel,
+        len(_class_names)
+    )
 
-model.load_state_dict(
-    checkpoint["model_state"]
-)
+    model_loaded.load_state_dict(
+        checkpoint["model_state"]
+    )
 
-model = model.to(device)
+    model_loaded = model_loaded.to(device)
+    model_loaded.eval()
 
-model.eval()
-
+    _model = model_loaded
+    return _model, _class_names
 
 
 def detect_disease(image_path):
-
+    model_loaded, class_names_loaded = load_model()
     
     image = Image.open(
         image_path
     ).convert("RGB")
 
-    
     image = transform(image)
-
-    
     image = image.unsqueeze(0)
-
-   
     image = image.to(device)
 
-  
     with torch.no_grad():
+        output = model_loaded(image)
 
-        output = model(image)
-
-    
     probabilities = torch.softmax(
         output,
         dim=1
     )
 
-    
     prediction = torch.argmax(
         probabilities,
         dim=1
     ).item()
 
- 
-    disease = class_names[prediction]
+    disease = class_names_loaded[prediction]
 
-   
     confidence = (
         probabilities[0][prediction].item()
         * 100
@@ -106,41 +101,38 @@ def detect_disease(image_path):
     return disease, confidence
 
 
-print()
-print("==============================")
-print("      🌾 KISAN AI")
-print("==============================")
+if __name__ == "__main__":
+    print()
+    print("==============================")
+    print("      🌾 KISAN AI")
+    print("==============================")
 
-image_path = input(
-    "Enter leaf image path: "
-)
-
-
-try:
-
-    disease, confidence = detect_disease(
-        image_path
+    image_path = input(
+        "Enter leaf image path: "
     )
 
-    print()
-    print("==============================")
-    print("       DISEASE RESULT")
-    print("==============================")
+    try:
+        disease, confidence = detect_disease(
+            image_path
+        )
 
-    print()
-    print("🌱 Disease:")
-    print(disease)
+        print()
+        print("==============================")
+        print("       DISEASE RESULT")
+        print("==============================")
 
-    print()
-    print("📊 Confidence:")
-    print(round(confidence, 2), "%")
+        print()
+        print("🌱 Disease:")
+        print(disease)
 
-    print()
-    print("==============================")
+        print()
+        print("📊 Confidence:")
+        print(round(confidence, 2), "%")
 
+        print()
+        print("==============================")
 
-except Exception as error:
-
-    print()
-    print("❌ Error:")
-    print(error)
+    except Exception as error:
+        print()
+        print("❌ Error:")
+        print(error)

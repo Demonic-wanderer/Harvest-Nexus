@@ -1,10 +1,10 @@
--- Demo seed data for Harvest Nexus
+-- Demo seed data for Harvest Nexus (Default password: password123)
 
 INSERT INTO users (name, email, phone, password_hash, role)
 VALUES
-('Ramesh Patel', 'ramesh@example.com', '9998887771', '$2a$10$examplehashvalue', 'farmer'),
-('Green Traders Co.', 'buyer@example.com', '9998887772', '$2a$10$examplehashvalue', 'buyer'),
-('Admin User', 'admin@example.com', '9998887773', '$2a$10$examplehashvalue', 'admin')
+('Ramesh Patel', 'ramesh@example.com', '9998887771', '$2a$10$nK43b59V2N9yC7.h2.f8KOFp5oZq8WwJ/4B9x9CqHn1XoJmBfB0eG', 'farmer'),
+('Green Traders Co.', 'buyer@example.com', '9998887772', '$2a$10$nK43b59V2N9yC7.h2.f8KOFp5oZq8WwJ/4B9x9CqHn1XoJmBfB0eG', 'buyer'),
+('Admin User', 'admin@example.com', '9998887773', '$2a$10$nK43b59V2N9yC7.h2.f8KOFp5oZq8WwJ/4B9x9CqHn1XoJmBfB0eG', 'admin')
 RETURNING id;
 
 INSERT INTO market_data (crop_name, region, current_price, trend, demand_indicator)

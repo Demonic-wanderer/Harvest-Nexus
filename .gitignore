@@ -1,2 +1,27 @@
-﻿node_modules/
+node_modules/
 .env
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environment
+.venv/
+venv/
+ENV/
+
+# Databases
+*.db
+*.sqlite3
+
+# Large machine learning models/checkpoints
+*.pth
+*.pt
+*.bin
+*.h5
+
+# macOS files
+.DS_Store
+.AppleDouble
+.LSOverride

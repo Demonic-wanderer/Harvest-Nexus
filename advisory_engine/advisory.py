@@ -11,14 +11,18 @@ def generate_advisory(request: AdvisoryRequest):
     if request.disease.name:
         disease_result = disease_rule(
             request.disease.name,
-            request.disease.confidence
+            request.disease.confidence,
+            crop=request.crop
         )
         recommendations.append(disease_result)
 
-  
-    irrigation_result = irrigation_rule(request.soil.moisture, request.weather.rain_probability)
-    if irrigation_result:
-        recommendations.append(irrigation_result)
+
+    irrigation_result = irrigation_rule(
+        request.soil.moisture,
+        request.weather.rain_probability,
+        crop_stage=request.crop_stage
+    )
+    recommendations.append(irrigation_result)
 
     # Nutrient recommendation
     if request.soil.nitrogen is not None:
@@ -27,22 +31,21 @@ def generate_advisory(request: AdvisoryRequest):
             request.soil.phosphorus,
             request.soil.potassium
         )
-
-        if nutrient_result:
-            recommendations.append(nutrient_result)
+        recommendations.append(nutrient_result)
 
 
     # Soil pH recommendation
     ph_result = ph_rule(request.soil.ph)
 
     if ph_result:
-     recommendations.append(ph_result)
+        recommendations.append(ph_result)
 
 
     # Weather recommendation
     weather_result = weather_rule(
         request.weather.temperature,
-        request.weather.humidity
+        request.weather.humidity,
+        crop=request.crop
     )
 
     if weather_result:

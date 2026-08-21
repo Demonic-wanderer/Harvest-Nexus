@@ -10,8 +10,11 @@ const Buyer = {
     return result.rows[0];
   },
 
-  async findAll() {
-    const result = await db.query(`SELECT * FROM buyers ORDER BY created_at DESC`);
+  async findAll(limit = 20, offset = 0) {
+    const result = await db.query(
+      `SELECT * FROM buyers ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
     return result.rows;
   },
 

@@ -11,35 +11,27 @@ def create_tables():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS market_prices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            market TEXT NOT NULL,
-            commodity TEXT NOT NULL,
-            price REAL NOT NULL,
-            date TEXT
+            crop_type TEXT NOT NULL,
+            region TEXT NOT NULL,
+            price_per_quintal REAL NOT NULL,
+            recorded_at TEXT NOT NULL
         )
     """)
-
-    cursor.execute("PRAGMA table_info(market_prices)")
-    columns = [row[1] for row in cursor.fetchall()]
-
-    if "date" not in columns:
-        cursor.execute(
-            "ALTER TABLE market_prices ADD COLUMN date TEXT"
-        )
 
     conn.commit()
     conn.close()
 
 
-def add_market_price(market, commodity, price, date):
+def add_market_price(crop_type, region, price_per_quintal, recorded_at):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        INSERT INTO market_prices (market, commodity, price, date)
+        INSERT INTO market_prices (crop_type, region, price_per_quintal, recorded_at)
         VALUES (?, ?, ?, ?)
         """,
-        (market, commodity, price, date)
+        (crop_type, region, price_per_quintal, recorded_at)
     )
 
     conn.commit()
@@ -51,10 +43,27 @@ def get_market_prices():
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT market, commodity, price, date FROM market_prices"
+        "SELECT crop_type, region, price_per_quintal, recorded_at FROM market_prices"
     )
 
     rows = cursor.fetchall()
     conn.close()
 
     return rows
+
+
+# SQLAlchemy configuration for FastAPI API layer
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from core.config import settings
+
+# If sqlite is in DATABASE_URL, create_engine options might differ, but standard create_engine works
+engine = create_engine(settings.DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

@@ -6,7 +6,7 @@ const {
 } = require('../controllers/advisory.controller');
 
 // Akasha (advisory engine) pushes recommendations here
-router.post('/', submitAdvisory);
+router.post('/', authMiddleware, submitAdvisory);
 
 router.get('/history/:farmId', authMiddleware, getAdvisoryHistory);
 router.get('/latest/:farmId', authMiddleware, getLatestAdvisory);

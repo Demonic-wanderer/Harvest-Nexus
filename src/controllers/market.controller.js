@@ -29,8 +29,12 @@ async function getMarketByCropRegion(req, res) {
 
 async function getAllMarketData(req, res) {
   try {
-    const data = await MarketData.findAll();
-    return success(res, { data });
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const page = parseInt(req.query.page, 10) || 1;
+    const offset = (page - 1) * limit;
+
+    const data = await MarketData.findAll(limit, offset);
+    return success(res, { data, page, limit });
   } catch (err) {
     return error(res, err.message);
   }

@@ -6,7 +6,7 @@ const {
 } = require('../controllers/disease.controller');
 
 // Oracle (AI engine) pushes prediction results here
-router.post('/predict-result', submitPrediction);
+router.post('/predict-result', authMiddleware, submitPrediction);
 
 router.get('/history/:cropId', authMiddleware, getHistoryByCrop);
 router.get('/latest/:cropId', authMiddleware, getLatestByCrop);
