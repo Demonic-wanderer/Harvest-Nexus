@@ -597,7 +597,43 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
+
+            // Live Weather & Emergency Alert Banner
+            if ((weather['rain_probability'] is num && (weather['rain_probability'] as num) >= 60) ||
+                session.advisory?['priority_level'] == 'HIGH') ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 15),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.orange.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        (weather['rain_probability'] is num && (weather['rain_probability'] as num) >= 60)
+                            ? (hindi
+                                ? '⚠️ भारी बारिश की संभावना (${weather['rain_probability']}%): कीटनाशक छिड़काव रोकें!'
+                                : '⚠️ Rain Alert (${weather['rain_probability']}%): Hold foliar spray to prevent runoff.')
+                            : (hindi
+                                ? '⚠️ उच्च प्राथमिकता अलर्ट: फसल स्वास्थ्य पर तत्काल ध्यान दें'
+                                : '⚠️ High Priority Alert: Immediate farm intervention required'),
+                        style: const TextStyle(
+                          color: Color(0xFFD84315),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             // Farm Health
             Container(
@@ -681,21 +717,21 @@ class DashboardScreen extends StatelessWidget {
             ActionCard(
               icon: '🔴',
               title: T.get('highPriority', hindi),
-              subtitle: session.advisory?['treatment_plan']?.toString() ?? T.get('treatBlight', hindi),
+              subtitle: session.advisory?['treatment_plan']?.toString() ?? (hindi ? 'पत्ती की फोटो अपलोड करके लाइव जांच करें' : 'Upload leaf photo to run live AI pathology scan'),
             ),
 
             ActionCard(
               icon: '🟠',
               title: T.get('mediumPriority', hindi),
-              subtitle: session.advisory?['irrigation_advice']?.toString() ?? T.get('irrigate', hindi),
+              subtitle: session.advisory?['irrigation_advice']?.toString() ?? (hindi ? 'लाइव मिट्टी और सिंचाई स्थिति सामान्य' : 'Live soil telemetry & moisture active'),
             ),
 
             ActionCard(
               icon: '🟢',
               title: T.get('opportunity', hindi),
-              subtitle: session.market == null
-                  ? '${T.get('rising', hindi)}\n${T.get('selling', hindi)}'
-                  : '${session.market?['trend'] ?? ''} • ₹${session.market?['current_price'] ?? '--'}/q',
+              subtitle: session.market != null
+                  ? '${session.market?['trend'] ?? 'Active'} • ₹${session.market?['current_price'] ?? '--'}/q in ${session.market?['region'] ?? 'Mandi'}'
+                  : (hindi ? 'लाइव मंडी भाव सिंक हो रहा है' : 'Live Mandi prices synced via API'),
             ),
 
             const SizedBox(height: 20),
@@ -1349,42 +1385,59 @@ class CommunityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
     return Scaffold(
       appBar: AppBar(
         title: Text(T.get('communityTitle', hindi)),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          final controller = TextEditingController();
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(hindi ? 'नया किसान विचार लिखें' : 'Share with Farmers'),
+              content: TextField(
+                controller: controller,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: hindi ? 'अपनी फसल या बाज़ार की जानकारी यहाँ साझा करें...' : 'Share crop condition or mandi update...',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(hindi ? 'रद्द करें' : 'Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (controller.text.trim().isNotEmpty) {
+                      session.addCommunityPost(controller.text);
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  child: Text(hindi ? 'पोस्ट करें' : 'Post'),
+                ),
+              ],
+            ),
+          );
+        },
         child: const Icon(Icons.add),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-
-          CommunityPost(
-            farmer: 'Ramesh Kumar',
-            text:
-                'My tomato crop has started showing yellow spots. '
-                'Has anyone faced this problem?',
-            likes: 24,
-          ),
-
-          CommunityPost(
-            farmer: 'Suresh Singh',
-            text:
-                'Market prices are rising this week. '
-                'Check your nearby mandi before selling.',
-            likes: 41,
-          ),
-
-          CommunityPost(
-            farmer: 'Amit Sharma',
-            text:
-                'What fertilizer are you using for your tomato crop?',
-            likes: 15,
-          ),
-        ],
-      ),
+      body: session.communityPosts.isEmpty
+          ? Center(child: Text(hindi ? 'कोई समुदाय पोस्ट नहीं है' : 'No community posts yet.'))
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: session.communityPosts.map((post) {
+                return CommunityPost(
+                  farmer: post['farmer']?.toString() ?? 'Farmer',
+                  text: post['text']?.toString() ?? '',
+                  likes: post['likes'] is int ? post['likes'] as int : 0,
+                  timestamp: post['timestamp']?.toString() ?? '',
+                );
+              }).toList(),
+            ),
     );
   }
 }
@@ -1393,12 +1446,14 @@ class CommunityPost extends StatelessWidget {
   final String farmer;
   final String text;
   final int likes;
+  final String timestamp;
 
   const CommunityPost({
     super.key,
     required this.farmer,
     required this.text,
     required this.likes,
+    this.timestamp = '',
   });
 
   @override

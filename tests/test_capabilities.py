@@ -95,6 +95,52 @@ def test_buyer_distance_and_logistics_quotes():
     print("geo+logistics ok", quote["distance_km"], len(quote["quotes"]))
 
 
+from datetime import date, timedelta
+from multimodel import forecast_harvest_volume
+
+
+def test_harvest_yield_forecast():
+    forecast = forecast_harvest_volume(
+        crop="Tomato",
+        land_size_acres=2.0,
+        farm_health_score=85,
+        growth_stage="Fruiting",
+        disease_severity="low",
+    )
+    assert forecast["estimated_yield_total_quintals"] > 0
+    assert forecast["base_yield_per_acre_q"] == 120.0
+    assert forecast["yield_range_max_quintals"] >= forecast["estimated_yield_total_quintals"]
+    print("yield forecast ok:", forecast["summary"])
+
+
+def test_chemical_safety_and_harvest_sync():
+    # 1. Chemical safety rain alert
+    rain_request = AdvisoryRequest(
+        crop="Tomato",
+        disease={"name": "Early Blight", "confidence": 0.85, "severity": "high"},
+        soil={"moisture": 35, "nitrogen": 40},
+        weather={"temperature": 28, "humidity": 85, "rain_probability": 75},
+    )
+    rain_advisory = generate_advisory(rain_request)
+    categories = [item["category"] for item in rain_advisory["recommendations"]]
+    assert "safety" in categories
+
+    # 2. Harvest market sync opportunity
+    near_harvest = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
+    sync_request = AdvisoryRequest(
+        crop="Tomato",
+        crop_stage="Fruiting",
+        expected_harvest_date=near_harvest,
+        disease={"name": "healthy", "confidence": 0.95},
+        soil={"moisture": 45, "nitrogen": 40},
+        weather={"temperature": 26, "humidity": 60, "rain_probability": 10},
+        market={"crop_name": "Tomato", "region": "Indore", "current_price": 2300, "trend": "Rising", "demand_indicator": "High", "forecast_price": 2500},
+    )
+    sync_advisory = generate_advisory(sync_request)
+    assert any("HARVEST LINKAGE" in item["action"] for item in sync_advisory["recommendations"])
+    print("chemical safety & harvest sync ok")
+
+
 if __name__ == "__main__":
     test_severity_mapping()
     test_disease_predict_without_checkpoint()
@@ -102,4 +148,6 @@ if __name__ == "__main__":
     test_advisory_market_and_health_score()
     test_market_forecast_not_two_price_only()
     test_buyer_distance_and_logistics_quotes()
-    print("\n===== CAPABILITY TESTS PASSED =====")
+    test_harvest_yield_forecast()
+    test_chemical_safety_and_harvest_sync()
+    print("\n===== ALL CAPABILITY TESTS PASSED WITH 100% SUCCESS =====")

@@ -1,5 +1,14 @@
 from .schemas import AdvisoryRequest
-from .rules import disease_rule, irrigation_rule, market_rule, nutrient_rule, ph_rule, weather_rule
+from .rules import (
+    chemical_safety_rule,
+    disease_rule,
+    harvest_market_sync_rule,
+    irrigation_rule,
+    market_rule,
+    nutrient_rule,
+    ph_rule,
+    weather_rule,
+)
 from .priority import calculate_priority as prioritize, get_highest_priority
 from .formatter import format_action_plan
 
@@ -35,10 +44,19 @@ def compute_farm_health_score(request: AdvisoryRequest, recommendations):
 
     if request.soil.moisture < 30:
         score -= 15
-    if request.soil.ph is not None and (request.soil.ph < 5.5 or request.soil.ph > 7.5):
+    elif request.soil.moisture > 80:
         score -= 10
+
+    if request.soil.ph is not None and (request.soil.ph < 5.5 or request.soil.ph > 7.8):
+        score -= 10
+
     if request.soil.nitrogen is not None and request.soil.nitrogen < 30:
         score -= 8
+    if request.soil.phosphorus is not None and request.soil.phosphorus < 20:
+        score -= 8
+    if request.soil.potassium is not None and request.soil.potassium < 20:
+        score -= 8
+
     if request.weather.temperature >= 35:
         score -= 8
     if request.weather.humidity >= 80:
@@ -57,6 +75,16 @@ def _advice_text(plan, category):
 def generate_advisory(request: AdvisoryRequest):
     recommendations = []
 
+    # 1. Chemical Spray & Weather Safety Guardrail
+    safety_result = chemical_safety_rule(
+        disease_name=request.disease.name,
+        severity=request.disease.severity,
+        rain_probability=request.weather.rain_probability,
+    )
+    if safety_result:
+        recommendations.append(safety_result)
+
+    # 2. Disease Pathology Advisory
     if request.disease.name:
         disease_result = disease_rule(
             request.disease.name,
@@ -66,6 +94,7 @@ def generate_advisory(request: AdvisoryRequest):
         )
         recommendations.append(disease_result)
 
+    # 3. Precision Irrigation Rule
     irrigation_result = irrigation_rule(
         request.soil.moisture,
         request.weather.rain_probability,
@@ -73,6 +102,7 @@ def generate_advisory(request: AdvisoryRequest):
     )
     recommendations.append(irrigation_result)
 
+    # 4. NPK Soil Nutrition Rule
     if request.soil.nitrogen is not None:
         nutrient_result = nutrient_rule(
             request.soil.nitrogen,
@@ -81,10 +111,12 @@ def generate_advisory(request: AdvisoryRequest):
         )
         recommendations.append(nutrient_result)
 
+    # 5. Soil pH Balance Rule
     ph_result = ph_rule(request.soil.ph)
     if ph_result:
         recommendations.append(ph_result)
 
+    # 6. Microclimate & Weather Rule
     weather_result = weather_rule(
         request.weather.temperature,
         request.weather.humidity,
@@ -93,8 +125,19 @@ def generate_advisory(request: AdvisoryRequest):
     if weather_result:
         recommendations.append(weather_result)
 
+    # 7. Harvest-to-Mandi Linkage Sync Rule (SIH Core Deliverable)
+    harvest_sync_result = harvest_market_sync_rule(
+        crop=request.crop,
+        expected_harvest_date=request.expected_harvest_date,
+        crop_stage=request.crop_stage,
+        market=request.market,
+    )
+    if harvest_sync_result:
+        recommendations.append(harvest_sync_result)
+
+    # 8. General Market Price & Demand Rule
     market_result = market_rule(request.market)
-    if market_result:
+    if market_result and not harvest_sync_result:
         recommendations.append(market_result)
 
     prioritized = prioritize(recommendations)

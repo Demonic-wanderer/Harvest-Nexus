@@ -1,7 +1,8 @@
 PRIORITY_ORDER = {
     "HIGH": 1,
     "MEDIUM": 2,
-    "LOW": 3
+    "OPPORTUNITY": 3,
+    "LOW": 4,
 }
 
 

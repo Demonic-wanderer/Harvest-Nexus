@@ -1,4 +1,9 @@
 import os
+import sys
+
+ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
+if ENGINE_DIR not in sys.path:
+    sys.path.insert(0, ENGINE_DIR)
 
 from disease_mapping import (
     display_name,
@@ -84,12 +89,25 @@ def _heuristic_predict(image_path):
 
 
 def _pack_result(class_name, confidence, source):
+    conf_val = round(float(confidence), 2)
+    severity = severity_from_prediction(class_name, conf_val)
+    is_confident = conf_val >= 60.0
+    
+    diagnostic_alert = None
+    if not is_confident:
+        diagnostic_alert = (
+            "Confidence is below 60%. The image may be blurry, occluded, or outside training distribution. "
+            "Please retake a clear close-up leaf photograph in natural daylight or consult an agronomist."
+        )
+
     return {
         "disease": class_name,
         "display_name": display_name(class_name),
-        "confidence": round(float(confidence), 2),
-        "severity": severity_from_prediction(class_name, confidence),
-        "treatments": treatments_for(class_name),
+        "confidence": conf_val,
+        "is_confident": is_confident,
+        "severity": severity,
+        "treatments": treatments_for(class_name, conf_val),
+        "diagnostic_alert": diagnostic_alert,
         "source": source,
     }
 
@@ -97,6 +115,13 @@ def _pack_result(class_name, confidence, source):
 def predict_disease(image_path):
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image '{image_path}' not found.")
+
+    try:
+        from PIL import Image
+        with Image.open(image_path) as img:
+            img.verify()
+    except Exception as exc:
+        raise ValueError(f"Invalid or corrupted image file: {exc}") from exc
 
     try:
         bundle, class_names_loaded = load_model()

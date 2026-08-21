@@ -34,6 +34,9 @@ class MarketData(BaseModel):
 class AdvisoryRequest(BaseModel):
     crop: str
     crop_stage: Optional[str] = None
+    expected_harvest_date: Optional[str] = None
+    sowing_date: Optional[str] = None
+    land_size_acres: Optional[float] = 1.0
     farm_id: Optional[str] = None
     crop_id: Optional[str] = None
     disease_id: Optional[str] = None

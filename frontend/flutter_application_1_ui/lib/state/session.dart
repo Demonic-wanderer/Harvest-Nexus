@@ -24,6 +24,32 @@ class SessionController extends ChangeNotifier {
   Map<String, dynamic>? scanResult;
   List<dynamic> buyers = [];
   List<dynamic> mandis = [];
+  List<Map<String, dynamic>> communityPosts = [
+    {
+      'farmer': 'Ramesh Kumar (Indore)',
+      'text': 'Live weather alert received: Rain probability is high today. Holding foliar fungicide spray.',
+      'likes': 18,
+      'timestamp': '20 mins ago',
+    },
+    {
+      'farmer': 'Suresh Singh (Bhopal)',
+      'text': 'Indore Mandi tomato price is trending upward at ₹2,300/q. Scheduled transporter dispatch.',
+      'likes': 32,
+      'timestamp': '1 hour ago',
+    },
+  ];
+
+  void addCommunityPost(String text) {
+    if (text.trim().isEmpty) return;
+    final author = user?['name'] != null ? '${user!['name']} (${farm?['location'] ?? 'Active Farm'})' : 'Active Farmer';
+    communityPosts.insert(0, {
+      'farmer': author,
+      'text': text.trim(),
+      'likes': 1,
+      'timestamp': 'Just now',
+    });
+    notifyListeners();
+  }
 
   bool get isLoggedIn => token != null && token!.isNotEmpty;
 
@@ -40,6 +66,26 @@ class SessionController extends ChangeNotifier {
     if (rawUser != null && rawUser.isNotEmpty) {
       user = Map<String, dynamic>.from(jsonDecode(rawUser) as Map);
     }
+    final rawFarm = prefs.getString('farm');
+    if (rawFarm != null && rawFarm.isNotEmpty) {
+      farm = Map<String, dynamic>.from(jsonDecode(rawFarm) as Map);
+    }
+    final rawCrop = prefs.getString('crop');
+    if (rawCrop != null && rawCrop.isNotEmpty) {
+      crop = Map<String, dynamic>.from(jsonDecode(rawCrop) as Map);
+    }
+    final rawAdvisory = prefs.getString('advisory');
+    if (rawAdvisory != null && rawAdvisory.isNotEmpty) {
+      advisory = Map<String, dynamic>.from(jsonDecode(rawAdvisory) as Map);
+    }
+    final rawMarket = prefs.getString('market');
+    if (rawMarket != null && rawMarket.isNotEmpty) {
+      market = Map<String, dynamic>.from(jsonDecode(rawMarket) as Map);
+    }
+    final rawWeather = prefs.getString('weather');
+    if (rawWeather != null && rawWeather.isNotEmpty) {
+      weather = Map<String, dynamic>.from(jsonDecode(rawWeather) as Map);
+    }
     restoring = false;
     notifyListeners();
     if (isLoggedIn) {
@@ -52,10 +98,20 @@ class SessionController extends ChangeNotifier {
     if (token == null) {
       await prefs.remove('token');
       await prefs.remove('user');
+      await prefs.remove('farm');
+      await prefs.remove('crop');
+      await prefs.remove('advisory');
+      await prefs.remove('market');
+      await prefs.remove('weather');
       return;
     }
     await prefs.setString('token', token!);
     await prefs.setString('user', jsonEncode(user ?? {}));
+    if (farm != null) await prefs.setString('farm', jsonEncode(farm!));
+    if (crop != null) await prefs.setString('crop', jsonEncode(crop!));
+    if (advisory != null) await prefs.setString('advisory', jsonEncode(advisory!));
+    if (market != null) await prefs.setString('market', jsonEncode(market!));
+    if (weather != null) await prefs.setString('weather', jsonEncode(weather!));
   }
 
   Future<bool> login(String identifier, String password) async {

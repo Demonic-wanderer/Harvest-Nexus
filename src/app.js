@@ -12,6 +12,7 @@ const buyerRoutes = require('./routes/buyer.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const mandiRoutes = require('./routes/mandi.routes');
 const logisticsRoutes = require('./routes/logistics.routes');
+const telemetryRoutes = require('./routes/telemetry.routes');
 
 const errorHandler = require('./middleware/errorHandler');
 const rateLimiter = require('./middleware/rateLimiter');
@@ -47,6 +48,7 @@ app.use('/api/buyer', buyerRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/mandi', mandiRoutes);
 app.use('/api/logistics', logisticsRoutes);
+app.use('/api/telemetry', telemetryRoutes);   // IoT telemetry stream pipeline
 
 // 404 handler
 app.use((req, res) => {

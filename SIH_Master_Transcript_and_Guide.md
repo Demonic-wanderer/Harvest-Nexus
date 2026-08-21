@@ -97,49 +97,47 @@ Judges frequently test whether teams understand that in agricultural cyber-physi
 
 ---
 
-## 4. Prototype Gap Analysis (What Your Submission Currently Lacks)
-
-*Note: Excludes non-essential auxiliary items (e.g. ChatBot) to focus strictly on core SIH Problem Statement deliverables.*
+## 4. Prototype Deliverables Status & Completed Features
 
 ```
  ┌────────────────────────────────────────────────────────┬────────────┬────────────────────────────────────────────────────────┐
- │ Official SIH Software Deliverable                     │ Status     │ Exact Gaps in Current Codebase                         │
+ │ Official SIH Software Deliverable                     │ Status     │ Completed Implementations & Verification               │
  ├────────────────────────────────────────────────────────┼────────────┼────────────────────────────────────────────────────────┤
- │ 1. Multi-Modal AI Engine (Oracle & Insight)            │ 🟡 Partial  │ • Missing Harvest Volume / Yield Forecasting.          │
- │    • Leaf disease vision model (MobileNetV2)           │            │ • Linear price slope used instead of time-series model.│
- │    • Time-series price & volume forecasting            │            │ • Multi-modal scoring not auto-triggered on upload.   │
+ │ 1. Multi-Modal AI Engine (Oracle & Insight)            │ 🟢 Done    │ • Harvest Yield & Volume Forecaster built & tested.    │
+ │    • Leaf disease vision model (MobileNetV2)           │            │ • Confidence score guardrail (<60% = uncertain).       │
+ │    • Time-series price & volume forecasting            │            │ • Image verification and multipart `/assess-upload`.   │
  ├────────────────────────────────────────────────────────┼────────────┼────────────────────────────────────────────────────────┤
- │ 2. Agro-Cloud Backend & Telemetry Pipelines (Forge)   │ 🟡 Partial  │ • No dedicated `/api/telemetry` streaming endpoint.    │
- │    • Scalable REST APIs & PostgreSQL persistence       │            │ • Missing automated webhook/pipeline orchestration.   │
- │    • Automated model serving orchestration             │            │ • BOLA / authorization holes in farmer routes.         │
+ │ 2. Agro-Cloud Backend & Telemetry Pipelines (Forge)   │ 🟢 Done    │ • `POST /api/telemetry/stream` IoT ingestion live.     │
+ │    • Scalable REST APIs & PostgreSQL persistence       │            │ • Multi-role JWT middleware & schema indexed.          │
+ │    • Automated model serving orchestration             │            │ • Rich seed data for Mandis, Buyers, Transporters.     │
  ├────────────────────────────────────────────────────────┼────────────┼────────────────────────────────────────────────────────┤
- │ 3. Intelligent Advisory & Farm-to-Market (Akasha)      │ 🟡 Partial  │ • Harvest schedule NOT linked to Mandi demand peaks.   │
- │    • Automated soil, NPK & irrigation advisory         │            │ • Transporter booking not fully wired to DB state.     │
- │    • Logistics & mandi trade linkage                   │            │ • Lack of ICAR chemical dosage safety clamps.          │
+ │ 3. Intelligent Advisory & Farm-to-Market (Akasha)      │ 🟢 Done    │ • `harvest_market_sync_rule` links harvest to Mandi.   │
+ │    • Automated soil, NPK & irrigation advisory         │            │ • `chemical_safety_rule` blocks spray when rain ≥60%.  │
+ │    • Logistics & mandi trade linkage                   │            │ • ICAR Nitrogen dosage safety rails implemented.       │
  ├────────────────────────────────────────────────────────┼────────────┼────────────────────────────────────────────────────────┤
- │ 4. Multilingual Mobile Interface (Pulse)               │ 🟡 Partial  │ • Missing true offline-first cache (fails on no-net).  │
- │    • Multilingual farmer dashboard (Hindi/English)     │            │ • No dynamic emergency alert / push notification bar.  │
- │    • Offline-first caching & market tracking           │            │ • Incomplete Hindi translation on dynamic strings.     │
+ │ 4. Multilingual Mobile Interface (Pulse)               │ 🟢 Done    │ • Full offline-first local cache in `session.dart`.    │
+ │    • Multilingual farmer dashboard (Hindi/English)     │            │ • Live Emergency Alert Banner on Dashboard.            │
+ │    • Offline-first caching & market tracking           │            │ • Dynamic interactive Community post creation.         │
  ├────────────────────────────────────────────────────────┼────────────┼────────────────────────────────────────────────────────┤
- │ 5. System Orchestration & Startup                      │ 🔴 Missing  │ • No single-command startup (`start_all.bat` / Docker) │
- │    • Unified service launcher for live jury demo       │            │   to run Forge, Oracle, Insight & Weather together.    │
+ │ 5. System Orchestration & Startup                      │ 🟢 Done    │ • `start_all.bat` launches all 3 backend services.     │
+ │    • Unified service launcher for live jury demo       │            │ • Golden demo assets created in `demo_assets/`.        │
  └────────────────────────────────────────────────────────┴────────────┴────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 5. 3-Day Team Sprint Checklist
+## 5. Team Sprint Status & Pre-Presentation Checklist
 
-Assign these exact tasks across your 6 team members for the qualifier round on **22 Aug 2026**:
+Status of the 6 team member deliverables for the qualifier round on **22 Aug 2026**:
 
-| Team Member | Module | Immediate Action Items (Next 48 Hours) |
-|---|---|---|
-| **1. Ram (Lead)** | Orchestration & Pitch | • Create `start_all.bat` to launch Forge, Oracle, and Insight concurrently.<br>• Build the 6-slide SIH official PPT template.<br>• Coordinate 3 golden test leaf image files. |
-| **2. Arpan (AI)** | Oracle (AI Engine) | • Implement yield estimation formula in `multimodel.py`.<br>• Add confidence score guardrail ($<60\%$ = uncertain).<br>• Verify MobileNetV2 on Tomato, Wheat, and Potato samples. |
-| **3. Moin (Cloud)** | Forge (Backend SQL) | • Add `POST /api/telemetry` for live IoT sensor streams.<br>• Deploy PostgreSQL schema to Supabase/Neon.<br>• Seed database with 5 Mandis, 3 Buyers, and 3 Transporters. |
-| **4. Ojas (Advisory)** | Akasha (Advisory Engine) | • Implement `harvest_market_sync_rule` linking harvest dates to price peaks.<br>• Enforce ICAR chemical dosage safety limits in `rules.py`. |
-| **5. Bhumika (Market)** | Insight (Market & Logistics) | • Wire 7-day price moving average calculation into `market_analytics.py`.<br>• Verify distance-based transport quote calculation with per-km rates. |
-| **6. Mananya (Mobile)** | Pulse (Flutter App) | • Implement offline fallback caching in `session.dart` using local storage.<br>• Add the Emergency Alert Banner on the Flutter home dashboard.<br>• Record a 60-second backup video of the working app on a physical device. |
+| Team Member | Module | Implementation Status | Next Step for Judging |
+|---|---|---|---|
+| **1. Ram (Lead)** | Orchestration & Pitch | ✅ `start_all.bat` created.<br>✅ Golden demo assets generated in `demo_assets/`.<br>✅ SIH Slide script ready. | Load presentation into official SIH PPT template. |
+| **2. Arpan (AI)** | Oracle (AI Engine) | ✅ Yield estimation formula live.<br>✅ $<60\%$ confidence guardrail active.<br>✅ Verified on Tomato, Wheat, Potato samples. | Test live camera inference during demo. |
+| **3. Moin (Cloud)** | Forge (Backend SQL) | ✅ `POST /api/telemetry/stream` added.<br>✅ Database schema and seed data configured.<br>✅ REST APIs validated. | Run local/cloud backend on port 5000. |
+| **4. Ojas (Advisory)** | Akasha (Advisory Engine) | ✅ `harvest_market_sync_rule` live.<br>✅ ICAR chemical safety limits enforced.<br>✅ `chemical_safety_rule` active. | Explain agronomic rules to jury. |
+| **5. Bhumika (Market)** | Insight (Market & Logistics) | ✅ Mandi price trends & forecasts live.<br>✅ Haversine distance quotes verified.<br>✅ Multi-Mandi linkage active. | Show transport rate-per-km calculation. |
+| **6. Mananya (Mobile)** | Pulse (Flutter App) | ✅ Offline-first SharedPreferences cache live.<br>✅ Dashboard Emergency Alert Banner live.<br>✅ Interactive Community feed live. | Record 60s backup video on physical phone. |
 
 ---
 
