@@ -1,0 +1,24 @@
+{
+  "name": "harvest-nexus-backend",
+  "version": "1.0.0",
+  "description": "Harvest Nexus - Cloud Backend (SQL) - Owner: Moin",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "migrate": "psql $DATABASE_URL -f db/schema.sql",
+    "seed": "psql $DATABASE_URL -f db/seed.sql"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
