@@ -3,8 +3,10 @@ import sys
 import argparse
 from fastapi import FastAPI
 
-# Ensure the script's directory is in sys.path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, APP_DIR)
+sys.path.insert(0, os.path.dirname(APP_DIR))
+sys.path.insert(0, os.path.abspath(os.path.join(APP_DIR, "..", "..")))
 
 from db.database import create_tables
 from services.market_service import list_prices, save_price

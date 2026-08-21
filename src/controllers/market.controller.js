@@ -4,11 +4,13 @@ const { success, error } = require('../utils/responseFormatter');
 // Called by Insight (Bhumika's module) to push new price/trend data
 async function submitMarketData(req, res) {
   try {
-    const { crop_name, region, current_price, trend, demand_indicator } = req.body;
+    const { crop_name, region, current_price, trend, demand_indicator, forecast_price } = req.body;
 
     if (!crop_name || !region) return error(res, 'crop_name and region are required', 400);
 
-    const record = await MarketData.create({ crop_name, region, current_price, trend, demand_indicator });
+    const record = await MarketData.create({
+      crop_name, region, current_price, trend, demand_indicator, forecast_price,
+    });
     return success(res, { record }, 'Market data stored', 201);
   } catch (err) {
     return error(res, err.message);

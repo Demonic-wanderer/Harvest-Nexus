@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS market_data (
     current_price DECIMAL(10,2),
     trend VARCHAR(20), -- Rising / Falling / Stable
     demand_indicator VARCHAR(20),
+    forecast_price DECIMAL(10,2),
     recorded_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -84,6 +85,8 @@ CREATE TABLE IF NOT EXISTS buyers (
     contact_email VARCHAR(150),
     location VARCHAR(150),
     crop_interest VARCHAR(100),
+    latitude DECIMAL(9,6),
+    longitude DECIMAL(9,6),
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -109,6 +112,18 @@ CREATE TABLE IF NOT EXISTS transactions (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- TRANSPORTERS
+CREATE TABLE IF NOT EXISTS transporters (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(150) NOT NULL,
+    contact_phone VARCHAR(20),
+    base_location VARCHAR(150),
+    vehicle_type VARCHAR(50),
+    capacity_quintals DECIMAL(10,2),
+    rate_per_km_quintal DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- LOGISTICS
 CREATE TABLE IF NOT EXISTS logistics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -128,3 +143,7 @@ CREATE INDEX IF NOT EXISTS idx_disease_history_crop ON disease_history(crop_id);
 CREATE INDEX IF NOT EXISTS idx_advisory_history_farm ON advisory_history(farm_id);
 CREATE INDEX IF NOT EXISTS idx_market_data_crop_region ON market_data(crop_name, region);
 CREATE INDEX IF NOT EXISTS idx_transactions_farmer ON transactions(farmer_id);
+
+ALTER TABLE buyers ADD COLUMN IF NOT EXISTS latitude DECIMAL(9,6);
+ALTER TABLE buyers ADD COLUMN IF NOT EXISTS longitude DECIMAL(9,6);
+ALTER TABLE market_data ADD COLUMN IF NOT EXISTS forecast_price DECIMAL(10,2);

@@ -15,6 +15,11 @@ const Farmer = {
     return result.rows[0];
   },
 
+  async findByPhone(phone) {
+    const result = await db.query(`SELECT * FROM users WHERE phone = $1`, [phone]);
+    return result.rows[0];
+  },
+
   async findById(id) {
     const result = await db.query(
       `SELECT id, name, email, phone, role, created_at FROM users WHERE id = $1`,

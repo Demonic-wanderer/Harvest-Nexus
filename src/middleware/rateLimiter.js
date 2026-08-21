@@ -3,9 +3,16 @@ const maxRequestsPerWindow = 100; // 100 requests per minute
 
 const clients = new Map();
 
+function pruneExpiredClients(now) {
+  for (const [ip, client] of clients) {
+    if (now - client.startTime > rateLimitWindowMs) clients.delete(ip);
+  }
+}
+
 function rateLimiter(req, res, next) {
-  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ip = req.ip || req.socket.remoteAddress;
   const now = Date.now();
+  if (clients.size > 1000) pruneExpiredClients(now);
 
   if (!clients.has(ip)) {
     clients.set(ip, {

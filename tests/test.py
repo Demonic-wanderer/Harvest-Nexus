@@ -1,3 +1,11 @@
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from advisory_engine.advisory import generate_advisory
 from advisory_engine.schemas import AdvisoryRequest
 
@@ -48,6 +56,7 @@ def test_high_confidence_disease():
     categories = [item["category"] for item in result["recommendations"]]
 
     assert "disease" in categories
+    assert result["farm_health_score"] <= 100
     print("TEST 1 PASSED")
 
 

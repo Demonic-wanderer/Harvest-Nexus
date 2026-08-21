@@ -6,62 +6,26 @@ the CLI's data into the shared Cloud Backend DB.
 """
 from db.database import get_db
 from fastapi import APIRouter, Depends
-from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.models.db_models import MarketPrice
 from app.models.schemas import MarketQuery, MarketResponse
+from app.services.market_service import ingest_government_prices, snapshot_from_db
 
 router = APIRouter(prefix="/market", tags=["Market Intelligence Engine"])
 
 
-def _calculate_trend(prices: list[MarketPrice]) -> str:
-    if len(prices) < 2:
-        return "Stable"
-    latest, previous = prices[0].price_per_quintal, prices[1].price_per_quintal
-    if previous == 0:
-        return "Stable"
-    pct_change = ((latest - previous) / previous) * 100
-    if pct_change >= settings.RISING_TREND_THRESHOLD_PCT:
-        return "Rising"
-    if pct_change <= settings.FALLING_TREND_THRESHOLD_PCT:
-        return "Falling"
-    return "Stable"
-
-
-def _estimate_demand(trend: str) -> str:
-    return {
-        "Rising": "High", "Stable": "Medium",
-        "Falling": "Low", "Unknown": "Unknown",
-    }[trend]
-
-
 @router.post("/snapshot", response_model=MarketResponse)
 def market_snapshot(query: MarketQuery, db: Session = Depends(get_db)):  # noqa: B008
-    """
-    Input: crop_type + region
-    Output: current price, expected trend, demand indicator
-    """
-    recent_prices = (
-        db.query(MarketPrice)
-        .filter(MarketPrice.crop_type == query.crop_type, MarketPrice.region == query.region)
-        .order_by(desc(MarketPrice.recorded_at))
-        .limit(2)
-        .all()
-    )
-
-    if not recent_prices:
-        return MarketResponse(
-            crop_type=query.crop_type, region=query.region,
-            current_price=0.0, trend="Unknown", demand_indicator="Unknown",
-        )
-
-    trend = _calculate_trend(recent_prices)
+    if query.ingest:
+        ingest_government_prices(db, query.crop_type, query.region)
+    analysis = snapshot_from_db(db, query.crop_type, query.region, persist=query.persist_to_forge)
     return MarketResponse(
         crop_type=query.crop_type,
         region=query.region,
-        current_price=recent_prices[0].price_per_quintal,
-        trend=trend,
-        demand_indicator=_estimate_demand(trend),
+        current_price=analysis["current_price"],
+        trend=analysis["trend"],
+        demand_indicator=analysis["demand_indicator"],
+        forecast_price=analysis.get("forecast_price"),
+        observations=analysis.get("observations"),
+        forge=analysis.get("forge") if isinstance(analysis.get("forge"), dict) else None,
     )

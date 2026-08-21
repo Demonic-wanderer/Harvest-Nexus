@@ -1,11 +1,11 @@
 const db = require('../config/db');
 
 const MarketData = {
-  async create({ crop_name, region, current_price, trend, demand_indicator }) {
+  async create({ crop_name, region, current_price, trend, demand_indicator, forecast_price }) {
     const result = await db.query(
-      `INSERT INTO market_data (crop_name, region, current_price, trend, demand_indicator)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [crop_name, region, current_price, trend, demand_indicator]
+      `INSERT INTO market_data (crop_name, region, current_price, trend, demand_indicator, forecast_price)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [crop_name, region, current_price, trend, demand_indicator, forecast_price]
     );
     return result.rows[0];
   },
@@ -16,6 +16,17 @@ const MarketData = {
       [crop_name, region]
     );
     return result.rows[0];
+  },
+
+  async findHistory(crop_name, region, limit = 30) {
+    const result = await db.query(
+      `SELECT * FROM market_data
+       WHERE crop_name = $1 AND region = $2
+       ORDER BY recorded_at DESC
+       LIMIT $3`,
+      [crop_name, region, limit]
+    );
+    return result.rows;
   },
 
   async findAll(limit = 20, offset = 0) {

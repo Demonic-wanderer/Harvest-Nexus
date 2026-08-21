@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Harvest Nexus uses the camera to scan crop leaves for disease.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Harvest Nexus uses your photos to upload leaf images for disease diagnosis.</string>
 </dict>
 </plist>

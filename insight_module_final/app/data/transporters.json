@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Malwa Agri Transport",
+    "contact_phone": "9826011111",
+    "base_location": "Indore",
+    "vehicle_type": "mini_truck",
+    "capacity_quintals": 80,
+    "rate_per_km_quintal": 1.8
+  },
+  {
+    "name": "Narmada Freight Co.",
+    "contact_phone": "9826022222",
+    "base_location": "Bhopal",
+    "vehicle_type": "truck",
+    "capacity_quintals": 200,
+    "rate_per_km_quintal": 1.4
+  },
+  {
+    "name": "Kisan Express Logistics",
+    "contact_phone": "9826033333",
+    "base_location": "Ujjain",
+    "vehicle_type": "pickup",
+    "capacity_quintals": 40,
+    "rate_per_km_quintal": 2.2
+  }
+]

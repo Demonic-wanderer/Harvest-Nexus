@@ -20,8 +20,16 @@ const FarmProfile = {
     return result.rows[0];
   },
 
-  async update(id, fields) {
-    const ALLOWED_FIELDS = ['farm_name', 'location', 'latitude', 'longitude', 'land_size_acres', 'soil_type', 'farmer_id'];
+  async findByIdAndFarmerId(id, farmer_id) {
+    const result = await db.query(
+      `SELECT * FROM farm_profiles WHERE id = $1 AND farmer_id = $2`,
+      [id, farmer_id]
+    );
+    return result.rows[0];
+  },
+
+  async updateOwned(id, farmer_id, fields) {
+    const ALLOWED_FIELDS = ['farm_name', 'location', 'latitude', 'longitude', 'land_size_acres', 'soil_type'];
     const keys = Object.keys(fields).filter(key => ALLOWED_FIELDS.includes(key));
     if (keys.length === 0) {
       throw new Error('No valid fields provided for update');
@@ -29,8 +37,8 @@ const FarmProfile = {
     const values = keys.map(key => fields[key]);
     const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
     const result = await db.query(
-      `UPDATE farm_profiles SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
-      [...values, id]
+      `UPDATE farm_profiles SET ${setClause} WHERE id = $${keys.length + 1} AND farmer_id = $${keys.length + 2} RETURNING *`,
+      [...values, id, farmer_id]
     );
     return result.rows[0];
   },

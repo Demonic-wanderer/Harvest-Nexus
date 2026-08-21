@@ -1,9 +1,13 @@
 const { Pool } = require('pg');
-const { DATABASE_URL } = require('./env');
+const { DATABASE_URL, DB_SSL, DB_SSL_REJECT_UNAUTHORIZED } = require('./env');
+
+if (!DATABASE_URL) {
+  throw new Error('FATAL: DATABASE_URL environment variable is required');
+}
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: DB_SSL ? { rejectUnauthorized: DB_SSL_REJECT_UNAUTHORIZED } : false,
 });
 
 pool.on('connect', () => {
@@ -12,7 +16,6 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('❌ Unexpected DB error', err);
-  process.exit(-1);
 });
 
 module.exports = {

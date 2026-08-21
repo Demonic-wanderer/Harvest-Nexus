@@ -1,0 +1,91 @@
+{
+  "Tomato___Bacterial_spot": {
+    "display_name": "Bacterial spot",
+    "severity_hints": ["lesions on leaves and fruit", "warm wet weather"],
+    "treatments": [
+      "Remove severely infected leaves",
+      "Apply a copper-based bactericide at label rate",
+      "Avoid overhead irrigation"
+    ]
+  },
+  "Tomato___Early_blight": {
+    "display_name": "Early blight",
+    "severity_hints": ["concentric brown spots", "lower leaves first"],
+    "treatments": [
+      "Prune affected lower foliage",
+      "Apply chlorothalonil or mancozeb as labelled",
+      "Improve airflow and mulch soil"
+    ]
+  },
+  "Tomato___Late_blight": {
+    "display_name": "Late blight",
+    "severity_hints": ["water-soaked lesions", "white fungal growth"],
+    "treatments": [
+      "Remove and destroy infected plants",
+      "Apply a systemic + protectant fungicide rotation",
+      "Keep foliage dry; harvest remaining healthy fruit"
+    ]
+  },
+  "Tomato___Leaf_Mold": {
+    "display_name": "Leaf mold",
+    "severity_hints": ["olive mold on underside of leaves"],
+    "treatments": [
+      "Increase greenhouse ventilation",
+      "Reduce humidity below 85%",
+      "Apply recommended fungicide if pressure continues"
+    ]
+  },
+  "Tomato___Septoria_leaf_spot": {
+    "display_name": "Septoria leaf spot",
+    "severity_hints": ["small circular spots with dark borders"],
+    "treatments": [
+      "Remove infected leaves",
+      "Mulch to reduce soil splash",
+      "Apply protectant fungicide on a 7–10 day interval"
+    ]
+  },
+  "Tomato___Spider_mites": {
+    "display_name": "Spider mites",
+    "severity_hints": ["stippling", "fine webbing"],
+    "treatments": [
+      "Spray underside of leaves with water",
+      "Release predatory mites if available",
+      "Use a labelled miticide if infestation is heavy"
+    ]
+  },
+  "Tomato___Target_Spot": {
+    "display_name": "Target spot",
+    "severity_hints": ["target-like lesions on leaves and fruit"],
+    "treatments": [
+      "Improve canopy airflow",
+      "Avoid leaf wetness at night",
+      "Apply strobilurin or SDHI fungicide as labelled"
+    ]
+  },
+  "Tomato___Yellow_Leaf_Curl_Virus": {
+    "display_name": "Yellow leaf curl virus",
+    "severity_hints": ["upward leaf curl", "stunting", "whitefly vector"],
+    "treatments": [
+      "Rogue infected plants",
+      "Control whiteflies with nets or insecticide rotation",
+      "Plant resistant varieties next season"
+    ]
+  },
+  "Tomato___mosaic_virus": {
+    "display_name": "Mosaic virus",
+    "severity_hints": ["mottled mosaic pattern", "leaf distortion"],
+    "treatments": [
+      "Remove infected plants",
+      "Disinfect tools between plants",
+      "Avoid tobacco handling before fieldwork"
+    ]
+  },
+  "Tomato___healthy": {
+    "display_name": "Healthy",
+    "severity_hints": [],
+    "treatments": [
+      "Continue routine scouting",
+      "Maintain balanced irrigation and nutrition"
+    ]
+  }
+}

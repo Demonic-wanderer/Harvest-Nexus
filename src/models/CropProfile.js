@@ -15,8 +15,30 @@ const CropProfile = {
     return result.rows;
   },
 
+  async findByFarmIdForFarmer(farm_id, farmer_id) {
+    const result = await db.query(
+      `SELECT crop_profiles.*
+       FROM crop_profiles
+       JOIN farm_profiles ON farm_profiles.id = crop_profiles.farm_id
+       WHERE crop_profiles.farm_id = $1 AND farm_profiles.farmer_id = $2`,
+      [farm_id, farmer_id]
+    );
+    return result.rows;
+  },
+
   async findById(id) {
     const result = await db.query(`SELECT * FROM crop_profiles WHERE id = $1`, [id]);
+    return result.rows[0];
+  },
+
+  async findByIdForFarmer(id, farmer_id) {
+    const result = await db.query(
+      `SELECT crop_profiles.*
+       FROM crop_profiles
+       JOIN farm_profiles ON farm_profiles.id = crop_profiles.farm_id
+       WHERE crop_profiles.id = $1 AND farm_profiles.farmer_id = $2`,
+      [id, farmer_id]
+    );
     return result.rows[0];
   },
 };

@@ -18,10 +18,18 @@ const Transaction = {
     return result.rows;
   },
 
-  async updateStatus(id, status) {
+  async findByIdAndFarmerId(id, farmer_id) {
     const result = await db.query(
-      `UPDATE transactions SET status = $1 WHERE id = $2 RETURNING *`,
-      [status, id]
+      `SELECT * FROM transactions WHERE id = $1 AND farmer_id = $2`,
+      [id, farmer_id]
+    );
+    return result.rows[0];
+  },
+
+  async updateStatusOwned(id, farmer_id, status) {
+    const result = await db.query(
+      `UPDATE transactions SET status = $1 WHERE id = $2 AND farmer_id = $3 RETURNING *`,
+      [status, id, farmer_id]
     );
     return result.rows[0];
   },

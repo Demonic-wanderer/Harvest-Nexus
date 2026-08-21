@@ -12,7 +12,12 @@ VALUES
 ('Tomato', 'Madhya Pradesh', 2300.00, 'Rising', 'High'),
 ('Wheat', 'Madhya Pradesh', 2100.00, 'Stable', 'Medium');
 
-INSERT INTO buyers (name, contact_phone, contact_email, location, crop_interest)
+INSERT INTO buyers (name, contact_phone, contact_email, location, crop_interest, latitude, longitude)
 VALUES
-('Fresh Mandi Traders', '9876543210', 'freshmandi@example.com', 'Indore', 'Tomato'),
-('AgriBulk Buyers', '9876543211', 'agribulk@example.com', 'Bhopal', 'Wheat');
+('Fresh Mandi Traders', '9876543210', 'freshmandi@example.com', 'Indore', 'Tomato', 22.7196, 75.8577),
+('AgriBulk Buyers', '9876543211', 'agribulk@example.com', 'Bhopal', 'Wheat', 23.2599, 77.4126);
+
+INSERT INTO transporters (name, contact_phone, base_location, vehicle_type, capacity_quintals, rate_per_km_quintal)
+VALUES
+('Malwa Agri Transport', '9826011111', 'Indore', 'mini_truck', 80, 1.8),
+('Narmada Freight Co.', '9826022222', 'Bhopal', 'truck', 200, 1.4);

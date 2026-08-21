@@ -54,5 +54,11 @@ server.js        Entry point
 2. Set up cloud SQL instance (Supabase/Neon)
 3. Core CRUD APIs ✅
 4. Auth + role middleware ✅
-5. Integrate with AI + Advisory + Market modules
+5. Integrate with AI + Advisory + Market modules — Oracle, Akasha, and Insight post to Forge with `X-Service-Key`
 6. Optimize (indexing — already added in schema)
+
+## Cross-module wiring
+- Oracle (`AI Engines/oracle_api.py`) predicts disease + severity and can POST `/api/disease/predict-result`
+- Akasha (`advisory_engine`) builds a farm-health score and can POST `/api/advisory`
+- Insight market/buyer/logistics APIs can POST `/api/market` and `/api/logistics`
+Set `FORGE_BASE_URL` plus `ORACLE_SERVICE_KEY` / `ADVISORY_SERVICE_KEY` / `INSIGHT_SERVICE_KEY`.

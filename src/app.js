@@ -11,16 +11,25 @@ const marketRoutes = require('./routes/market.routes');
 const buyerRoutes = require('./routes/buyer.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const mandiRoutes = require('./routes/mandi.routes');
+const logisticsRoutes = require('./routes/logistics.routes');
 
 const errorHandler = require('./middleware/errorHandler');
 const rateLimiter = require('./middleware/rateLimiter');
+const { CORS_ORIGINS, IS_PRODUCTION } = require('./config/env');
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
-app.use(morgan('dev'));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || CORS_ORIGINS.includes(origin) || (!IS_PRODUCTION && CORS_ORIGINS.length === 0)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origin is not allowed by CORS'));
+  },
+}));
+app.use(express.json({ limit: '1mb' }));
 app.use(rateLimiter);
+app.use(morgan('dev'));
 
 // Health check
 app.get('/', (req, res) => {
@@ -37,6 +46,7 @@ app.use('/api/market', marketRoutes);         // consumed by Insight (Market/Log
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/mandi', mandiRoutes);
+app.use('/api/logistics', logisticsRoutes);
 
 // 404 handler
 app.use((req, res) => {

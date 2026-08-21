@@ -26,10 +26,14 @@ async function register(req, res) {
 
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return error(res, 'email and password are required', 400);
+    const { email, phone, password } = req.body;
+    if ((!email && !phone) || !password) {
+      return error(res, 'email or phone, and password are required', 400);
+    }
 
-    const user = await Farmer.findByEmail(email);
+    const user = email
+      ? await Farmer.findByEmail(email)
+      : await Farmer.findByPhone(phone);
     if (!user) return error(res, 'Invalid credentials', 401);
 
     const match = await bcrypt.compare(password, user.password_hash);

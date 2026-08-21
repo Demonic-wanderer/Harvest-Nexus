@@ -98,21 +98,22 @@ def ph_rule(ph):
     }
 
 
-def disease_rule(disease_name, confidence, crop=None):
+def disease_rule(disease_name, confidence, crop=None, severity=None):
     """
     Generates an advisory based on disease prediction,
     model confidence, and specific crop.
     """
     crop_info = f" on {crop}" if crop else ""
+    healthy = not disease_name or "healthy" in disease_name.lower()
 
-    if not disease_name or disease_name.lower() == "healthy":
+    if healthy:
         return {
             "type": "disease",
             "priority": "LOW",
             "message": f"No significant disease detected{crop_info}."
         }
 
-    if confidence >= 0.80:
+    if (severity and severity.lower() == "high") or confidence >= 0.80:
         return {
             "type": "disease",
             "priority": "HIGH",
@@ -163,4 +164,45 @@ def weather_rule(temperature, humidity, crop=None):
         "type": "weather",
         "priority": "MEDIUM",
         "message": " ".join(recommendations)
+    }
+
+
+def market_rule(market):
+    if market is None or market.current_price is None:
+        return None
+
+    trend = (market.trend or "Stable").capitalize()
+    demand = market.demand_indicator or "Unknown"
+    crop = market.crop_name or "the crop"
+    forecast = ""
+    if market.forecast_price:
+        forecast = f" Near-term forecast is ₹{market.forecast_price:.0f}/quintal."
+
+    if trend.lower() == "falling" and (demand.lower() in {"low", "unknown"}):
+        return {
+            "type": "market",
+            "priority": "MEDIUM",
+            "message": (
+                f"{crop} prices are {trend.lower()} at ₹{market.current_price:.0f}/quintal "
+                f"with {demand.lower()} demand. Consider holding if storage is available.{forecast}"
+            ),
+        }
+
+    if trend.lower() == "rising":
+        return {
+            "type": "market",
+            "priority": "LOW",
+            "message": (
+                f"{crop} prices are rising at ₹{market.current_price:.0f}/quintal "
+                f"({demand} demand). Selling in the next window may capture the upswing.{forecast}"
+            ),
+        }
+
+    return {
+        "type": "market",
+        "priority": "LOW",
+        "message": (
+            f"{crop} market is {trend.lower()} at ₹{market.current_price:.0f}/quintal "
+            f"with {demand.lower()} demand.{forecast}"
+        ),
     }

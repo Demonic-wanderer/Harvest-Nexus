@@ -29,5 +29,6 @@ def format_action_plan(recommendations):
 
     return {
         "title": "Today's Action Plan",
-        "recommendations": action_plan
+        "recommendations": action_plan,
+        "farm_health_score": None,
     }

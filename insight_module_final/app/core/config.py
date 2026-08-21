@@ -15,11 +15,11 @@ class Settings:
     APP_NAME: str = "Harvest Nexus - Insight Module"
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://user:password@localhost:5432/harvest_nexus"
+        "sqlite:///./insight_module.db"
     )
     MARKET_PRICE_API_KEY: str = os.getenv("MARKET_PRICE_API_KEY", "")
     GOV_AGRI_DATA_API_URL: str = os.getenv(
-        "GOV_AGRI_DATA_API_URL", "https://api.data.gov.in/agri"
+        "GOV_AGRI_DATA_API_URL", "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a24601d3dead"
     )
     RISING_TREND_THRESHOLD_PCT: float = 3.0
     FALLING_TREND_THRESHOLD_PCT: float = -3.0

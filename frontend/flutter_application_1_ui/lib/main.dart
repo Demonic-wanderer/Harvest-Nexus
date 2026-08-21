@@ -1,7 +1,21 @@
-import 'package:flutter/material.dart';
+import 'dart:typed_data';
 
-void main() {
-  runApp(const HarvestNexusApp());
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+
+import 'state/session.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final session = SessionController();
+  await session.restore();
+  runApp(
+    ChangeNotifierProvider.value(
+      value: session,
+      child: const HarvestNexusApp(),
+    ),
+  );
 }
 
 // ============================================================
@@ -37,9 +51,21 @@ class _HarvestNexusAppState extends State<HarvestNexusApp> {
         ),
         scaffoldBackgroundColor: const Color(0xFFF5F8F3),
       ),
-      home: LoginScreen(
-        hindi: hindi,
-        onLanguageChanged: toggleLanguage,
+      home: Consumer<SessionController>(
+        builder: (context, session, _) {
+          if (session.restoring) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (session.isLoggedIn) {
+            return const MainNavigation();
+          }
+          return LoginScreen(
+            hindi: hindi,
+            onLanguageChanged: toggleLanguage,
+          );
+        },
       ),
     );
   }
@@ -57,7 +83,11 @@ class T {
       'login': ['Login', 'लॉगिन'],
       'register': ['Register', 'रजिस्टर करें'],
       'phone': ['Phone Number', 'फ़ोन नंबर'],
+      'email': ['Email', 'ईमेल'],
+      'name': ['Full name', 'पूरा नाम'],
       'password': ['Password', 'पासवर्ड'],
+      'loginFailed': ['Login failed', 'लॉगिन असफल'],
+      'account': ['Email or phone', 'ईमेल या फ़ोन'],
       'continue': ['Continue', 'जारी रखें'],
       'dashboard': ['Dashboard', 'डैशबोर्ड'],
       'disease': ['Disease Diagnosis', 'रोग पहचान'],
@@ -177,7 +207,7 @@ class SectionTitle extends StatelessWidget {
 // LOGIN
 // ============================================================
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   final bool hindi;
   final VoidCallback onLanguageChanged;
 
@@ -188,9 +218,37 @@ class LoginScreen extends StatelessWidget {
   });
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final identifierController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    identifierController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final session = context.read<SessionController>();
+    final ok = await session.login(
+      identifierController.text.trim(),
+      passwordController.text,
+    );
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(session.error ?? T.get('loginFailed', widget.hindi))),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final phoneController = TextEditingController();
-    final passwordController = TextEditingController();
+    final hindi = widget.hindi;
+    final session = context.watch<SessionController>();
 
     return Scaffold(
       body: SafeArea(
@@ -199,25 +257,18 @@ class LoginScreen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 35),
-
-              // Farmer illustration
               Container(
                 height: 130,
                 width: 130,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F5E9),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
-                  child: Text(
-                    '👨‍🌾',
-                    style: TextStyle(fontSize: 70),
-                  ),
+                  child: Text('👨‍🌾', style: TextStyle(fontSize: 70)),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               Text(
                 T.get('appName', hindi),
                 style: const TextStyle(
@@ -226,43 +277,32 @@ class LoginScreen extends StatelessWidget {
                   color: Color(0xFF1B5E20),
                 ),
               ),
-
               const SizedBox(height: 8),
-
               Text(
                 T.get('welcome', hindi),
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 18, color: Colors.grey),
               ),
-
               const SizedBox(height: 35),
-
               Align(
                 alignment: Alignment.centerRight,
                 child: LanguageButton(
                   hindi: hindi,
-                  onChanged: onLanguageChanged,
+                  onChanged: widget.onLanguageChanged,
                 ),
               ),
-
               const SizedBox(height: 20),
-
               TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
+                controller: identifierController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: T.get('phone', hindi),
-                  prefixIcon: const Icon(Icons.phone),
+                  labelText: T.get('account', hindi),
+                  prefixIcon: const Icon(Icons.person),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
-
               const SizedBox(height: 15),
-
               TextField(
                 controller: passwordController,
                 obscureText: true,
@@ -274,21 +314,12 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 25),
-
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MainNavigation(),
-                      ),
-                    );
-                  },
+                  onPressed: session.busy ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: Colors.white,
@@ -296,22 +327,115 @@ class LoginScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Text(
-                    T.get('login', hindi),
-                    style: const TextStyle(fontSize: 17),
-                  ),
+                  child: session.busy
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(T.get('login', hindi), style: const TextStyle(fontSize: 17)),
                 ),
               ),
-
               const SizedBox(height: 12),
-
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RegisterScreen(
+                        hindi: hindi,
+                        onLanguageChanged: widget.onLanguageChanged,
+                      ),
+                    ),
+                  );
+                },
                 child: Text(T.get('register', hindi)),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class RegisterScreen extends StatefulWidget {
+  final bool hindi;
+  final VoidCallback onLanguageChanged;
+
+  const RegisterScreen({
+    super.key,
+    required this.hindi,
+    required this.onLanguageChanged,
+  });
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
+    final session = context.read<SessionController>();
+    final ok = await session.register(
+      name: nameController.text.trim(),
+      email: emailController.text.trim(),
+      phone: phoneController.text.trim(),
+      password: passwordController.text,
+    );
+    if (ok && mounted) {
+      Navigator.pop(context);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(session.error ?? T.get('loginFailed', widget.hindi))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hindi = widget.hindi;
+    final session = context.watch<SessionController>();
+    return Scaffold(
+      appBar: AppBar(title: Text(T.get('register', hindi))),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          TextField(
+            controller: nameController,
+            decoration: InputDecoration(labelText: T.get('name', hindi)),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: emailController,
+            decoration: InputDecoration(labelText: T.get('email', hindi)),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: phoneController,
+            decoration: InputDecoration(labelText: T.get('phone', hindi)),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: InputDecoration(labelText: T.get('password', hindi)),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: session.busy ? null : _register,
+            child: Text(T.get('register', hindi)),
+          ),
+        ],
       ),
     );
   }
@@ -416,6 +540,11 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
+    final score = session.healthScore;
+    final weather = session.weather ?? {};
+    final cropName = session.crop?['crop_name']?.toString() ?? T.get('tomato', hindi);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -450,7 +579,7 @@ class DashboardScreen extends StatelessWidget {
 
             // Greeting
             Text(
-              '${T.get('welcome', hindi)} 👋',
+              '${T.get('welcome', hindi)} ${session.user?['name'] ?? ''} 👋',
               style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
@@ -461,7 +590,7 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 5),
 
             Text(
-              '${T.get('crop', hindi)}: ${T.get('tomato', hindi)}',
+              '${T.get('crop', hindi)}: $cropName',
               style: const TextStyle(
                 color: Colors.grey,
                 fontSize: 16,
@@ -496,16 +625,16 @@ class DashboardScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          '81/100',
-                          style: TextStyle(
+                        Text(
+                          '$score/100',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 40,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Text(
-                          'Good condition',
+                        Text(
+                          session.advisory == null ? 'Connect a farm to see live scores' : 'Live from Forge',
                           style: TextStyle(
                             color: Colors.white70,
                           ),
@@ -521,13 +650,13 @@ class DashboardScreen extends StatelessWidget {
                       alignment: Alignment.center,
                       children: [
                         CircularProgressIndicator(
-                          value: .81,
+                          value: (score.clamp(0, 100)) / 100,
                           strokeWidth: 9,
                           backgroundColor: Colors.white24,
                           color: Colors.white,
                         ),
-                        const Text(
-                          '81%',
+                        Text(
+                          '$score%',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -552,20 +681,21 @@ class DashboardScreen extends StatelessWidget {
             ActionCard(
               icon: '🔴',
               title: T.get('highPriority', hindi),
-              subtitle: T.get('treatBlight', hindi),
+              subtitle: session.advisory?['treatment_plan']?.toString() ?? T.get('treatBlight', hindi),
             ),
 
             ActionCard(
               icon: '🟠',
               title: T.get('mediumPriority', hindi),
-              subtitle: T.get('irrigate', hindi),
+              subtitle: session.advisory?['irrigation_advice']?.toString() ?? T.get('irrigate', hindi),
             ),
 
             ActionCard(
               icon: '🟢',
               title: T.get('opportunity', hindi),
-              subtitle:
-                  '${T.get('rising', hindi)}\n${T.get('selling', hindi)}',
+              subtitle: session.market == null
+                  ? '${T.get('rising', hindi)}\n${T.get('selling', hindi)}'
+                  : '${session.market?['trend'] ?? ''} • ₹${session.market?['current_price'] ?? '--'}/q',
             ),
 
             const SizedBox(height: 20),
@@ -577,7 +707,7 @@ class DashboardScreen extends StatelessWidget {
                   child: InfoCard(
                     icon: Icons.thermostat,
                     title: T.get('temperature', hindi),
-                    value: '31°C',
+                    value: '${weather['temperature'] ?? '--'}°C',
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -585,7 +715,7 @@ class DashboardScreen extends StatelessWidget {
                   child: InfoCard(
                     icon: Icons.water_drop,
                     title: T.get('humidity', hindi),
-                    value: '78%',
+                    value: '${weather['humidity'] ?? '--'}%',
                   ),
                 ),
               ],
@@ -599,7 +729,7 @@ class DashboardScreen extends StatelessWidget {
                   child: InfoCard(
                     icon: Icons.grass,
                     title: T.get('soilMoisture', hindi),
-                    value: '18%',
+                    value: '${weather['rain_probability'] ?? '--'}%',
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -607,7 +737,7 @@ class DashboardScreen extends StatelessWidget {
                   child: InfoCard(
                     icon: Icons.science,
                     title: T.get('npk', hindi),
-                    value: 'N 42',
+                    value: session.advisory == null ? '--' : 'NPK',
                   ),
                 ),
               ],
@@ -747,6 +877,12 @@ class DiseaseSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
+    final name = session.disease?['disease_name']?.toString()
+        ?? session.scanResult?['display_name']?.toString()
+        ?? 'No scan yet';
+    final confidence = session.disease?['confidence'] ?? session.scanResult?['confidence'];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -759,39 +895,18 @@ class DiseaseSummaryCard extends StatelessWidget {
                 color: Colors.red.shade50,
                 borderRadius: BorderRadius.circular(15),
               ),
-              child: const Center(
-                child: Text(
-                  '🍅',
-                  style: TextStyle(fontSize: 38),
-                ),
-              ),
+              child: const Center(child: Text('🍅', style: TextStyle(fontSize: 38))),
             ),
-
             const SizedBox(width: 15),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(T.get('diseaseDetected', hindi), style: const TextStyle(color: Colors.grey)),
+                  Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   Text(
-                    T.get('diseaseDetected', hindi),
-                    style: const TextStyle(
-                      color: Colors.grey,
-                    ),
-                  ),
-                  Text(
-                    T.get('earlyBlight', hindi),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '${T.get('confidence', hindi)}: 92%',
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    '${T.get('confidence', hindi)}: ${confidence ?? '--'}%',
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -817,6 +932,11 @@ class MarketSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
+    final cropName = session.crop?['crop_name']?.toString() ?? T.get('tomato', hindi);
+    final price = session.market?['current_price'];
+    final trend = session.market?['trend']?.toString() ?? T.get('trend', hindi);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -824,24 +944,17 @@ class MarketSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.trending_up,
-                  color: Colors.green,
-                  size: 35,
-                ),
+                const Icon(Icons.trending_up, color: Colors.green, size: 35),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '${T.get('tomato', hindi)} Market',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    '$cropName Market',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
-                const Text(
-                  '₹2300/q',
-                  style: TextStyle(
+                Text(
+                  price == null ? '--' : '₹$price/q',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
@@ -850,11 +963,7 @@ class MarketSummaryCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: .78,
-              minHeight: 7,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            Text(trend),
           ],
         ),
       ),
@@ -866,7 +975,7 @@ class MarketSummaryCard extends StatelessWidget {
 // DISEASE SCREEN
 // ============================================================
 
-class DiseaseScreen extends StatelessWidget {
+class DiseaseScreen extends StatefulWidget {
   final bool hindi;
 
   const DiseaseScreen({
@@ -875,116 +984,107 @@ class DiseaseScreen extends StatelessWidget {
   });
 
   @override
+  State<DiseaseScreen> createState() => _DiseaseScreenState();
+}
+
+class _DiseaseScreenState extends State<DiseaseScreen> {
+  final picker = ImagePicker();
+  Uint8List? previewBytes;
+
+  Future<void> _pick(ImageSource source) async {
+    final file = await picker.pickImage(source: source, imageQuality: 85);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    setState(() => previewBytes = bytes);
+    final session = context.read<SessionController>();
+    final ok = await session.scanLeaf(file.name, bytes);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(session.error ?? 'Scan failed')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final hindi = widget.hindi;
+    final session = context.watch<SessionController>();
+    final result = session.scanResult ?? session.disease;
+    final confidence = (result?['confidence'] is num)
+        ? (result!['confidence'] as num) / ((result['confidence'] as num) > 1 ? 100 : 1)
+        : 0.0;
+    final treatments = result?['treatments'];
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(T.get('disease', hindi)),
-      ),
+      appBar: AppBar(title: Text(T.get('disease', hindi))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-
             Container(
               height: 230,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F5E9),
                 borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: Colors.green.shade200,
-                ),
+                border: Border.all(color: Colors.green.shade200),
+                image: previewBytes != null
+                    ? DecorationImage(image: MemoryImage(previewBytes!), fit: BoxFit.cover)
+                    : null,
               ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.camera_alt_outlined,
-                    size: 70,
-                    color: Color(0xFF2E7D32),
-                  ),
-                  SizedBox(height: 15),
-                  Text(
-                    '📷',
-                    style: TextStyle(fontSize: 35),
-                  ),
-                ],
-              ),
+              child: previewBytes == null
+                  ? const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.camera_alt_outlined, size: 70, color: Color(0xFF2E7D32)),
+                        SizedBox(height: 15),
+                        Text('📷', style: TextStyle(fontSize: 35)),
+                      ],
+                    )
+                  : null,
             ),
-
             const SizedBox(height: 20),
-
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text(T.get('diseaseDetected', hindi)),
-                      content: Text(
-                        '${T.get('earlyBlight', hindi)}\n\n'
-                        '${T.get('confidence', hindi)}: 92%\n'
-                        'Severity: Moderate',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                onPressed: session.busy ? null : () => _pick(ImageSource.camera),
                 icon: const Icon(Icons.camera_alt),
                 label: Text(T.get('scanLeaf', hindi)),
               ),
             ),
-
             const SizedBox(height: 12),
-
             OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: session.busy ? null : () => _pick(ImageSource.gallery),
               icon: const Icon(Icons.upload),
               label: Text(T.get('uploadLeaf', hindi)),
             ),
-
             const SizedBox(height: 30),
-
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      T.get('diseaseDetected', hindi),
-                      style: const TextStyle(
-                        color: Colors.grey,
-                      ),
-                    ),
+                    Text(T.get('diseaseDetected', hindi), style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 5),
                     Text(
-                      T.get('earlyBlight', hindi),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      result?['display_name']?.toString()
+                          ?? result?['disease_name']?.toString()
+                          ?? 'No leaf scanned yet',
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 15),
-                    const LinearProgressIndicator(
-                      value: .92,
-                    ),
+                    LinearProgressIndicator(value: confidence.clamp(0, 1)),
                     const SizedBox(height: 8),
-                    Text(
-                      '${T.get('confidence', hindi)}: 92%',
-                    ),
+                    Text('${T.get('confidence', hindi)}: ${result?['confidence'] ?? '--'}%'),
+                    if (result?['severity'] != null) Text('Severity: ${result!['severity']}'),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Recommended treatment will appear here '
-                      'after Oracle AI prediction is connected.',
-                    ),
+                    if (treatments is List)
+                      ...treatments.map((item) => Text('• $item'))
+                    else
+                      const Text('Scan a leaf to get Oracle treatment advice.'),
                   ],
                 ),
               ),
@@ -1010,14 +1110,16 @@ class MarketScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
+    final cropName = session.crop?['crop_name']?.toString() ?? T.get('tomato', hindi);
+    final price = session.market?['current_price'];
+    final trend = session.market?['trend']?.toString() ?? T.get('trend', hindi);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(T.get('market', hindi)),
-      ),
+      appBar: AppBar(title: Text(T.get('market', hindi))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-
           Card(
             color: const Color(0xFFE8F5E9),
             child: Padding(
@@ -1025,88 +1127,46 @@ class MarketScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    T.get('tomato', hindi),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(cropName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
-                  const Text(
-                    '₹2300 / quintal',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Text(
+                    price == null ? 'No Forge market data yet' : '₹$price / quintal',
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.trending_up,
-                        color: Colors.green,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        T.get('rising', hindi),
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Text(trend, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          Text(
-            T.get('nearbyMandis', hindi),
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
+          Text(T.get('nearbyMandis', hindi), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-
-          MandiCard(
-            name: 'Azadpur Mandi',
-            distance: '18 km',
-            price: '₹2300/q',
-          ),
-
-          MandiCard(
-            name: 'Local Agricultural Market',
-            distance: '9 km',
-            price: '₹2180/q',
-          ),
-
+          if (session.mandis.isEmpty)
+            const Text('No mandis returned from Forge yet.')
+          else
+            ...session.mandis.map((item) {
+              final mandi = Map<String, dynamic>.from(item as Map);
+              return MandiCard(
+                name: mandi['name']?.toString() ?? 'Mandi',
+                distance: mandi['location']?.toString() ?? '',
+                price: mandi['distance_km'] == null ? '' : '${mandi['distance_km']} km',
+              );
+            }),
           const SizedBox(height: 25),
-
-          Text(
-            T.get('nearbyBuyers', hindi),
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
+          Text(T.get('nearbyBuyers', hindi), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-
-          BuyerCard(
-            name: 'Fresh Harvest Traders',
-            location: 'Nearby',
-          ),
-
-          BuyerCard(
-            name: 'Green Valley Foods',
-            location: '25 km',
-          ),
+          if (session.buyers.isEmpty)
+            const Text('No buyers returned from Forge yet.')
+          else
+            ...session.buyers.map((item) {
+              final buyer = Map<String, dynamic>.from(item as Map);
+              return BuyerCard(
+                name: buyer['name']?.toString() ?? 'Buyer',
+                location: buyer['location']?.toString()
+                    ?? (buyer['distance_km'] == null ? '' : '${buyer['distance_km']} km'),
+              );
+            }),
         ],
       ),
     );
@@ -1407,33 +1467,33 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
+    final items = <NotificationCard>[
+      if (session.advisory?['treatment_plan'] != null)
+        NotificationCard(
+          icon: Icons.warning_amber,
+          title: session.advisory?['priority_level']?.toString() ?? T.get('highPriority', hindi),
+          text: session.advisory!['treatment_plan'].toString(),
+        ),
+      if (session.advisory?['irrigation_advice'] != null)
+        NotificationCard(
+          icon: Icons.water_drop,
+          title: T.get('mediumPriority', hindi),
+          text: session.advisory!['irrigation_advice'].toString(),
+        ),
+      if (session.market?['trend'] != null)
+        NotificationCard(
+          icon: Icons.trending_up,
+          title: T.get('opportunity', hindi),
+          text: '${session.market!['trend']} • ₹${session.market!['current_price'] ?? '--'}/q',
+        ),
+    ];
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(T.get('notifications', hindi)),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-
-          NotificationCard(
-            icon: Icons.warning_amber,
-            title: T.get('highPriority', hindi),
-            text: T.get('treatBlight', hindi),
-          ),
-
-          NotificationCard(
-            icon: Icons.water_drop,
-            title: T.get('mediumPriority', hindi),
-            text: T.get('irrigate', hindi),
-          ),
-
-          NotificationCard(
-            icon: Icons.trending_up,
-            title: T.get('opportunity', hindi),
-            text: T.get('rising', hindi),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(T.get('notifications', hindi))),
+      body: items.isEmpty
+          ? const Center(child: Text('No live alerts yet. Connect Forge data to see notifications.'))
+          : ListView(padding: const EdgeInsets.all(16), children: items),
     );
   }
 }
@@ -1484,6 +1544,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
     return Scaffold(
       appBar: AppBar(
         title: Text(T.get('profile', hindi)),
@@ -1502,10 +1563,10 @@ class ProfileScreen extends StatelessWidget {
 
           const SizedBox(height: 15),
 
-          const Center(
+          Center(
             child: Text(
-              'Rajesh Kumar',
-              style: TextStyle(
+              session.user?['name']?.toString() ?? 'Farmer',
+              style: const TextStyle(
                 fontSize: 23,
                 fontWeight: FontWeight.bold,
               ),
@@ -1516,27 +1577,27 @@ class ProfileScreen extends StatelessWidget {
 
           ProfileItem(
             icon: Icons.person,
-            title: T.get('myProfile', hindi),
+            title: session.user?['email']?.toString() ?? T.get('myProfile', hindi),
           ),
 
           ProfileItem(
             icon: Icons.agriculture,
-            title: T.get('farmProfile', hindi),
+            title: session.farm?['farm_name']?.toString() ?? T.get('farmProfile', hindi),
           ),
 
           ProfileItem(
             icon: Icons.location_on,
-            title: '${T.get('location', hindi)}: Haryana',
+            title: '${T.get('location', hindi)}: ${session.farm?['location'] ?? '--'}',
           ),
 
           ProfileItem(
             icon: Icons.landscape,
-            title: '${T.get('landSize', hindi)}: 5 Acres',
+            title: '${T.get('landSize', hindi)}: ${session.farm?['land_size_acres'] ?? '--'} acres',
           ),
 
           ProfileItem(
             icon: Icons.eco,
-            title: '${T.get('mainCrop', hindi)}: ${T.get('tomato', hindi)}',
+            title: '${T.get('mainCrop', hindi)}: ${session.crop?['crop_name'] ?? T.get('tomato', hindi)}',
           ),
 
           const SizedBox(height: 20),
@@ -1544,7 +1605,7 @@ class ProfileScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: Text(T.get('logout', hindi)),
-            onTap: () {},
+            onTap: () => context.read<SessionController>().logout(),
           ),
         ],
       ),

@@ -41,6 +41,8 @@ class Buyer(Base):
     name = Column(String, nullable=False)
     crop_types = Column(String, nullable=False)
     location = Column(String, index=True, nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     contact_number = Column(String, nullable=True)
     mandi_id = Column(Integer, ForeignKey("mandis.id"), nullable=True)
 
