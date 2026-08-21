@@ -7,9 +7,11 @@ if ENGINE_DIR not in sys.path:
 
 from disease_mapping import (
     display_name,
+    display_name_hi,
     load_labels,
     severity_from_prediction,
     treatments_for,
+    treatments_for_hi,
 )
 
 MODEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mobilenetv2_disease.pth")
@@ -17,6 +19,10 @@ IMAGE_SIZE = 224
 
 _model = None
 _class_names = None
+
+
+class ModelUnavailableError(RuntimeError):
+    """Raised when Oracle has no validated trained disease checkpoint."""
 
 
 def _torch_stack():
@@ -43,49 +49,41 @@ def load_model():
         return _model, _class_names
 
     if not os.path.exists(MODEL_FILE):
-        raise FileNotFoundError(MODEL_FILE)
+        raise ModelUnavailableError(
+            f"Disease-model checkpoint is missing: {MODEL_FILE}. "
+            "Train or install a PlantVillage-trained checkpoint before accepting leaf scans."
+        )
 
     torch, models, transforms = _torch_stack()
     device = _device(torch)
-    checkpoint = torch.load(MODEL_FILE, map_location=device)
-    _class_names = checkpoint["class_names"]
+    try:
+        checkpoint = torch.load(MODEL_FILE, map_location=device, weights_only=True)
+    except TypeError:  # PyTorch before the weights_only option
+        checkpoint = torch.load(MODEL_FILE, map_location=device)
+    except Exception as exc:
+        raise ModelUnavailableError(f"Unable to read disease-model checkpoint: {exc}") from exc
+    _class_names = checkpoint.get("class_names")
+    if not isinstance(_class_names, list) or not _class_names:
+        raise ModelUnavailableError("Disease-model checkpoint has no valid class_names metadata.")
+    if "model_state" not in checkpoint:
+        raise ModelUnavailableError("Disease-model checkpoint has no model_state weights.")
+    expected_classes = load_labels()
+    if _class_names != expected_classes:
+        raise ModelUnavailableError(
+            "Disease-model classes do not match this application's supported tomato disease labels."
+        )
 
     model_loaded = models.mobilenet_v2(weights=None)
     model_loaded.classifier[1] = torch.nn.Linear(model_loaded.last_channel, len(_class_names))
-    model_loaded.load_state_dict(checkpoint["model_state"])
+    try:
+        model_loaded.load_state_dict(checkpoint["model_state"])
+    except RuntimeError as exc:
+        raise ModelUnavailableError(f"Disease-model weights are incompatible with MobileNetV2: {exc}") from exc
     model_loaded = model_loaded.to(device)
     model_loaded.eval()
 
     _model = (model_loaded, device, transforms)
     return _model, _class_names
-
-
-def _heuristic_predict(image_path):
-    """Used only when the trained checkpoint is absent so the API is not blocked."""
-    from PIL import Image, ImageStat
-
-    image = Image.open(image_path).convert("RGB")
-    stats = ImageStat.Stat(image)
-    r, g, b = stats.mean
-    labels = load_labels()
-
-    if g > r + 20 and g > b + 10:
-        class_name = "Tomato___healthy"
-        confidence = min(92.0, 55 + (g - r) / 2)
-    elif r > g + 15 and r > b:
-        class_name = "Tomato___Early_blight"
-        confidence = min(88.0, 50 + (r - g) / 2)
-    elif b > g and r < 90:
-        class_name = "Tomato___Late_blight"
-        confidence = 62.0
-    elif r > 140 and g > 140 and b < 90:
-        class_name = "Tomato___Yellow_Leaf_Curl_Virus"
-        confidence = 70.0
-    else:
-        class_name = labels[0]
-        confidence = 54.0
-
-    return class_name, confidence, "color_heuristic"
 
 
 def _pack_result(class_name, confidence, source):
@@ -103,11 +101,17 @@ def _pack_result(class_name, confidence, source):
     return {
         "disease": class_name,
         "display_name": display_name(class_name),
+        "display_name_hi": display_name_hi(class_name),
         "confidence": conf_val,
         "is_confident": is_confident,
         "severity": severity,
         "treatments": treatments_for(class_name, conf_val),
+        "treatments_hi": treatments_for_hi(class_name, conf_val),
         "diagnostic_alert": diagnostic_alert,
+        "diagnostic_alert_hi": (
+            "विश्वास स्तर 60% से कम है। साफ प्राकृतिक रोशनी में पत्ती की तस्वीर लेकर फिर प्रयास करें या कृषि सलाहकार से संपर्क करें।"
+            if diagnostic_alert else None
+        ),
         "source": source,
     }
 
@@ -123,11 +127,7 @@ def predict_disease(image_path):
     except Exception as exc:
         raise ValueError(f"Invalid or corrupted image file: {exc}") from exc
 
-    try:
-        bundle, class_names_loaded = load_model()
-    except FileNotFoundError:
-        class_name, confidence, source = _heuristic_predict(image_path)
-        return _pack_result(class_name, confidence, source)
+    bundle, class_names_loaded = load_model()
 
     from PIL import Image
 
@@ -143,7 +143,7 @@ def predict_disease(image_path):
     prediction = torch.argmax(probabilities, dim=1).item()
     disease = class_names_loaded[prediction]
     confidence = probabilities[0][prediction].item() * 100
-    return _pack_result(disease, confidence, "mobilenetv2")
+    return _pack_result(disease, confidence, "mobilenetv2_plantvillage")
 
 
 def detect_disease(image_path):

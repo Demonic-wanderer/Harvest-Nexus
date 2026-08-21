@@ -1,5 +1,6 @@
 const Mandi = require('../models/Mandi');
 const { success, error } = require('../utils/responseFormatter');
+const { withDistance } = require('../utils/geo');
 
 async function createMandi(req, res) {
   try {
@@ -16,7 +17,11 @@ async function createMandi(req, res) {
 async function getAllMandis(req, res) {
   try {
     const mandis = await Mandi.findAll();
-    return success(res, { mandis });
+    const hasCoordinates = req.query.lat != null && req.query.lon != null;
+    const ranked = hasCoordinates
+      ? withDistance(mandis, Number(req.query.lat), Number(req.query.lon))
+      : mandis;
+    return success(res, { mandis: ranked });
   } catch (err) {
     return error(res, err.message);
   }

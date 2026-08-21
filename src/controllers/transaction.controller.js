@@ -4,8 +4,8 @@ const { success, error } = require('../utils/responseFormatter');
 
 async function createTransaction(req, res) {
   try {
-    const { farmer_id, buyer_id, crop_id, quantity_quintals, price_per_quintal, status } = req.body;
-    const txn = await Transaction.create({ farmer_id, buyer_id, crop_id, quantity_quintals, price_per_quintal, status });
+    const { buyer_id, crop_id, quantity_quintals, price_per_quintal, status } = req.body;
+    const txn = await Transaction.create({ farmer_id: req.user.id, buyer_id, crop_id, quantity_quintals, price_per_quintal, status });
     return success(res, { transaction: txn }, 'Transaction created', 201);
   } catch (err) {
     return error(res, err.message);
@@ -14,6 +14,7 @@ async function createTransaction(req, res) {
 
 async function getTransactionsByFarmer(req, res) {
   try {
+    if (req.user.id !== req.params.farmerId && req.user.role !== 'admin') return error(res, 'Forbidden', 403);
     const transactions = await Transaction.findByFarmerId(req.params.farmerId);
     return success(res, { transactions });
   } catch (err) {
@@ -24,7 +25,7 @@ async function getTransactionsByFarmer(req, res) {
 async function updateTransactionStatus(req, res) {
   try {
     const { status } = req.body;
-    const txn = await Transaction.updateStatus(req.params.id, status);
+    const txn = await Transaction.updateStatusOwned(req.params.id, req.user.id, status);
     if (!txn) return error(res, 'Transaction not found', 404);
     return success(res, { transaction: txn }, 'Status updated');
   } catch (err) {

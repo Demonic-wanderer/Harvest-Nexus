@@ -723,7 +723,10 @@ class DashboardScreen extends StatelessWidget {
             ActionCard(
               icon: '🟠',
               title: T.get('mediumPriority', hindi),
-              subtitle: session.advisory?['irrigation_advice']?.toString() ?? (hindi ? 'लाइव मिट्टी और सिंचाई स्थिति सामान्य' : 'Live soil telemetry & moisture active'),
+              subtitle: session.advisory?['irrigation_advice']?.toString()
+                  ?? (session.telemetry != null
+                      ? 'Live soil moisture: ${session.telemetry!['soil_moisture'] ?? '--'}%'
+                      : (hindi ? 'लाइव मिट्टी और सिंचाई स्थिति सामान्य' : 'Live soil telemetry & moisture active')),
             ),
 
             ActionCard(
@@ -765,7 +768,7 @@ class DashboardScreen extends StatelessWidget {
                   child: InfoCard(
                     icon: Icons.grass,
                     title: T.get('soilMoisture', hindi),
-                    value: '${weather['rain_probability'] ?? '--'}%',
+                    value: '${session.telemetry?['soil_moisture'] ?? '--'}%',
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -773,7 +776,9 @@ class DashboardScreen extends StatelessWidget {
                   child: InfoCard(
                     icon: Icons.science,
                     title: T.get('npk', hindi),
-                    value: session.advisory == null ? '--' : 'NPK',
+                    value: session.telemetry == null
+                        ? '--'
+                        : '${session.telemetry!['nitrogen'] ?? '--'}/${session.telemetry!['phosphorus'] ?? '--'}/${session.telemetry!['potassium'] ?? '--'}',
                   ),
                 ),
               ],
@@ -1033,13 +1038,30 @@ class _DiseaseScreenState extends State<DiseaseScreen> {
     final bytes = await file.readAsBytes();
     setState(() => previewBytes = bytes);
     final session = context.read<SessionController>();
-    final ok = await session.scanLeaf(file.name, bytes);
+    final ok = await session.scanLeaf(file.name, bytes, hindi: widget.hindi);
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(session.error ?? 'Scan failed')),
+        SnackBar(content: Text(_scanError(session.error, widget.hindi))),
       );
     }
+  }
+
+  String _scanError(String? error, bool hindi) {
+    final value = error ?? '';
+    if (value.contains('unsupported_image_type') || value.contains('JPEG, PNG, or WebP')) {
+      return hindi ? 'कृपया JPEG, PNG या WebP पत्ती की तस्वीर चुनें।' : 'Please choose a JPEG, PNG, or WebP leaf photo.';
+    }
+    if (value.contains('image_too_large') || value.contains('10 MB')) {
+      return hindi ? 'तस्वीर 10 MB या उससे छोटी होनी चाहिए।' : 'The image must be 10 MB or smaller.';
+    }
+    if (value.contains('invalid_image') || value.contains('readable leaf image')) {
+      return hindi ? 'तस्वीर पढ़ी नहीं जा सकी। साफ पत्ती की तस्वीर लेकर फिर कोशिश करें।' : 'The image could not be read. Retake a clear leaf photo and try again.';
+    }
+    if (value.contains('model_unavailable')) {
+      return hindi ? 'रोग पहचान मॉडल अभी उपलब्ध नहीं है।' : 'The disease model is not available yet.';
+    }
+    return hindi ? 'स्कैन पूरा नहीं हो सका। कृपया फिर कोशिश करें।' : 'Scan could not be completed. Please try again.';
   }
 
   @override
@@ -1106,21 +1128,28 @@ class _DiseaseScreenState extends State<DiseaseScreen> {
                     Text(T.get('diseaseDetected', hindi), style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 5),
                     Text(
-                      result?['display_name']?.toString()
+                      (hindi ? result?['display_name_hi'] : result?['display_name'])?.toString()
                           ?? result?['disease_name']?.toString()
-                          ?? 'No leaf scanned yet',
+                          ?? (hindi ? 'अभी कोई पत्ती स्कैन नहीं हुई' : 'No leaf scanned yet'),
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 15),
                     LinearProgressIndicator(value: confidence.clamp(0, 1)),
                     const SizedBox(height: 8),
                     Text('${T.get('confidence', hindi)}: ${result?['confidence'] ?? '--'}%'),
-                    if (result?['severity'] != null) Text('Severity: ${result!['severity']}'),
+                    if (result?['severity'] != null) Text('${hindi ? 'गंभीरता' : 'Severity'}: ${result!['severity']}'),
+                    if (result?['diagnostic_alert'] != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        (hindi ? result?['diagnostic_alert_hi'] : result?['diagnostic_alert'])?.toString() ?? '',
+                        style: const TextStyle(color: Colors.deepOrange),
+                      ),
+                    ],
                     const SizedBox(height: 20),
-                    if (treatments is List)
-                      ...treatments.map((item) => Text('• $item'))
+                    if ((hindi ? result?['treatments_hi'] : treatments) is List)
+                      ...List<dynamic>.from(hindi ? result?['treatments_hi'] : treatments).map((item) => Text('• $item'))
                     else
-                      const Text('Scan a leaf to get Oracle treatment advice.'),
+                      Text(hindi ? 'उपचार सलाह पाने के लिए पत्ती स्कैन करें।' : 'Scan a leaf to get Oracle treatment advice.'),
                   ],
                 ),
               ),
@@ -1284,6 +1313,7 @@ class LogisticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
     return Scaffold(
       appBar: AppBar(
         title: Text(T.get('logistics', hindi)),
@@ -1315,23 +1345,37 @@ class LogisticsScreen extends StatelessWidget {
             ),
           ),
 
-          VehicleCard(
-            type: 'Mini Truck',
-            capacity: '1 Ton',
-            distance: 'Available nearby',
-          ),
-
-          VehicleCard(
-            type: 'Tractor Trolley',
-            capacity: '2 Ton',
-            distance: 'Available',
-          ),
-
-          VehicleCard(
-            type: 'Large Truck',
-            capacity: '5 Ton',
-            distance: '25 km away',
-          ),
+          const SizedBox(height: 16),
+          if (session.transporters.isEmpty)
+            const Text('No transporters are stored in Forge yet.')
+          else
+            ...session.transporters.map((item) {
+              final transporter = Map<String, dynamic>.from(item as Map);
+              return VehicleCard(
+                type: transporter['name']?.toString() ?? 'Transporter',
+                capacity: '${transporter['capacity_quintals'] ?? '--'} quintals • ${transporter['vehicle_type'] ?? 'vehicle'}',
+                distance: transporter['base_location']?.toString() ?? 'Location unavailable',
+              );
+            }),
+          const SizedBox(height: 20),
+          const Text('Your stored sale & delivery', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          if (session.transactions.isEmpty)
+            const Text('No crop transactions have been recorded yet.')
+          else
+            ...session.transactions.map((item) {
+              final transaction = Map<String, dynamic>.from(item as Map);
+              final buyer = transaction['buyer_name']?.toString() ?? 'Buyer';
+              final logistics = transaction['transporter_name']?.toString();
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.receipt_long, color: Color(0xFF2E7D32)),
+                  title: Text('${transaction['crop_name'] ?? 'Crop'} • $buyer'),
+                  subtitle: Text(logistics == null ? 'Sale ${transaction['status'] ?? 'pending'}' : '$logistics • ${transaction['logistics_status'] ?? 'arranged'}'),
+                  trailing: Text('₹${transaction['price_per_quintal'] ?? '--'}/q'),
+                ),
+              );
+            }),
         ],
       ),
     );

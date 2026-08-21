@@ -1,7 +1,6 @@
 const { success, error } = require('../utils/responseFormatter');
-
-// In-memory latest telemetry cache per farm
-const farmTelemetryCache = {};
+const Telemetry = require('../models/Telemetry');
+const FarmProfile = require('../models/FarmProfile');
 
 async function submitTelemetry(req, res) {
   try {
@@ -20,6 +19,9 @@ async function submitTelemetry(req, res) {
 
     if (!farm_id) {
       return error(res, 'farm_id is required for telemetry ingestion', 400);
+    }
+    if (req.user && !(await FarmProfile.findByIdAndFarmerId(farm_id, req.user.id))) {
+      return error(res, 'Farm not found', 404);
     }
 
     const moistureVal = parseFloat(soil_moisture ?? 30);
@@ -47,15 +49,13 @@ async function submitTelemetry(req, res) {
       humidity: parseFloat(humidity ?? 65),
       rain_probability: parseFloat(rain_probability ?? 10),
       anomalies,
-      recorded_at: new Date().toISOString(),
     };
-
-    farmTelemetryCache[farm_id] = telemetryRecord;
+    const storedTelemetry = await Telemetry.create(telemetryRecord);
 
     return success(
       res,
       {
-        telemetry: telemetryRecord,
+        telemetry: storedTelemetry,
         status: anomalies.length > 0 ? 'ANOMALY_DETECTED' : 'OPTIMAL',
         anomaly_count: anomalies.length,
       },
@@ -70,17 +70,10 @@ async function submitTelemetry(req, res) {
 async function getLatestTelemetry(req, res) {
   try {
     const { farmId } = req.params;
-    const telemetry = farmTelemetryCache[farmId] || {
-      farm_id: farmId,
-      soil_moisture: 32.0,
-      soil_temperature: 25.0,
-      soil_ph: 6.5,
-      nitrogen: 35.0,
-      phosphorus: 28.0,
-      potassium: 30.0,
-      status: 'OPTIMAL',
-      recorded_at: new Date().toISOString(),
-    };
+    if (!(await FarmProfile.findByIdAndFarmerId(farmId, req.user.id)) && req.user.role !== 'admin') {
+      return error(res, 'Farm not found', 404);
+    }
+    const telemetry = await Telemetry.findLatestByFarmId(farmId);
 
     return success(res, { telemetry });
   } catch (err) {

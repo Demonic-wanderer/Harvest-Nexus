@@ -5,8 +5,9 @@ import 'package:http/http.dart' as http;
 import '../config.dart';
 
 class ApiException implements Exception {
-  ApiException(this.message);
+  ApiException(this.message, {this.code});
   final String message;
+  final String? code;
 
   @override
   String toString() => message;
@@ -78,14 +79,48 @@ class ForgeApi {
     return _parse(response);
   }
 
-  Future<Map<String, dynamic>> predictLeaf(String filename, List<int> bytes) async {
-    final uri = Uri.parse('${AppConfig.oracleBaseUrl}/predict-upload');
+  Future<Map<String, dynamic>> assessLeaf({
+    required String filename,
+    required List<int> bytes,
+    required String crop,
+    required String cropId,
+    required String farmId,
+    required double landSizeAcres,
+    required bool hindi,
+  }) async {
+    final uri = Uri.parse('${AppConfig.oracleBaseUrl}/assess-upload');
     final request = http.MultipartRequest('POST', uri)
-      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename))
+      ..fields.addAll({
+        'crop': crop,
+        'crop_id': cropId,
+        'farm_id': farmId,
+        'land_size_acres': '$landSizeAcres',
+        // These demo-safe defaults make the scan useful before a sensor is paired.
+        'soil_moisture': '30',
+        'air_temperature': '30',
+        'humidity': '60',
+        'language': hindi ? 'hi' : 'en',
+        'persist_to_forge': 'true',
+      });
     final streamed = await _client.send(request);
     final response = await http.Response.fromStream(streamed);
     if (response.statusCode >= 400) {
-      throw ApiException('Oracle scan failed (${response.statusCode})');
+      String message = 'Oracle assessment failed (${response.statusCode})';
+      String? code;
+      try {
+        final body = jsonDecode(response.body);
+        final detail = body is Map ? body['detail'] : null;
+        if (detail is Map) {
+          message = detail['message']?.toString() ?? message;
+          code = detail['code']?.toString();
+        } else if (detail != null) {
+          message = detail.toString();
+        }
+      } catch (_) {
+        // Keep the HTTP status message if a proxy returns a non-JSON body.
+      }
+      throw ApiException(message, code: code);
     }
     final decoded = jsonDecode(response.body);
     if (decoded is Map<String, dynamic>) return decoded;

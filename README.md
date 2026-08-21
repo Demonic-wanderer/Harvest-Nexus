@@ -19,6 +19,22 @@ npm run seed           # optional demo data (db/seed.sql)
 npm run dev             # starts server with nodemon
 ```
 
+For the live walkthrough, run `npm run seed` after migrations, then sign in as
+`ramesh@example.com` with `password123`. The seed creates Ramesh's tomato farm,
+initial advisory, market records, buyers, mandis, transporters, a confirmed
+sale with logistics, and a telemetry reading. Leave `CORS_ORIGINS` blank for a local
+Flutter web run, or set the exact browser origin in a shared environment.
+
+## PostgreSQL data flow
+
+Forge is the system of record for the live application. `users` own
+`farm_profiles`, which own `crop_profiles`; leaf scans create `disease_history`
+and `advisory_history`; sensor readings are stored in `telemetry`. The market
+workflow uses `market_data`, `buyers`, `mandis`, `transporters`, `transactions`,
+and `logistics`. The Flutter dashboard reads those stored records, including
+ranked nearby buyers/mandis and each farmer's booked delivery, rather than
+hardcoded demo cards.
+
 ## Folder Structure
 
 ```

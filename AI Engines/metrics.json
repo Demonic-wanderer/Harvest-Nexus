@@ -1,0 +1,71 @@
+{
+  "created_at": "2026-08-21T21:46:46.437603+00:00",
+  "dataset": "D:\\Nexus\\PlantVillage-Dataset\\raw\\color",
+  "epochs": 10,
+  "samples": 10754,
+  "classes": [
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites",
+    "Tomato___Target_Spot",
+    "Tomato___Yellow_Leaf_Curl_Virus",
+    "Tomato___mosaic_virus",
+    "Tomato___healthy"
+  ],
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 1.2355,
+      "accuracy": 70.24
+    },
+    {
+      "epoch": 2,
+      "loss": 0.7943,
+      "accuracy": 81.18
+    },
+    {
+      "epoch": 3,
+      "loss": 0.6157,
+      "accuracy": 86.47
+    },
+    {
+      "epoch": 4,
+      "loss": 0.51,
+      "accuracy": 89.96
+    },
+    {
+      "epoch": 5,
+      "loss": 0.4237,
+      "accuracy": 91.19
+    },
+    {
+      "epoch": 6,
+      "loss": 0.3683,
+      "accuracy": 92.56
+    },
+    {
+      "epoch": 7,
+      "loss": 0.3088,
+      "accuracy": 94.29
+    },
+    {
+      "epoch": 8,
+      "loss": 0.2746,
+      "accuracy": 95.24
+    },
+    {
+      "epoch": 9,
+      "loss": 0.2603,
+      "accuracy": 96.35
+    },
+    {
+      "epoch": 10,
+      "loss": 0.2154,
+      "accuracy": 96.62
+    }
+  ],
+  "checkpoint": "D:\\Nexus\\Harvest-Nexus\\AI Engines\\mobilenetv2_disease.pth"
+}

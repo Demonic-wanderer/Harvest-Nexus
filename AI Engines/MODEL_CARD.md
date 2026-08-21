@@ -22,9 +22,8 @@ python "AI Engines/evaluate.py" --dataset path/to/leaf --checkpoint "AI Engines/
 Writes `eval_report.json` and merges metrics into `metrics.json`.
 
 ## Fallback
-If the checkpoint is missing, `disease_detection.py` uses a documented colour heuristic so the service is not blocked. Predictions then have `"source": "color_heuristic"` and must not be treated as MobileNet output.
+Oracle refuses leaf scans when the checkpoint is missing or malformed (`503 ModelUnavailableError`). This avoids presenting a colour heuristic as a disease diagnosis. The health endpoint reports `"model_ready": false` until a checkpoint is installed.
 
 ## Limitations
-- The heuristic is not a substitute for a trained model.
 - Severity is derived from class + confidence, not lesion area.
 - Treatment text is agronomic guidance, not a pesticide prescription.

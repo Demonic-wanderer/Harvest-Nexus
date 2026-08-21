@@ -12,7 +12,16 @@ const Transaction = {
 
   async findByFarmerId(farmer_id) {
     const result = await db.query(
-      `SELECT * FROM transactions WHERE farmer_id = $1 ORDER BY created_at DESC`,
+      `SELECT t.*, b.name AS buyer_name, cp.crop_name,
+              l.id AS logistics_id, l.transporter_name, l.contact_phone AS transporter_phone,
+              l.pickup_location, l.drop_location, l.status AS logistics_status
+       FROM transactions t
+       LEFT JOIN buyers b ON b.id = t.buyer_id
+       LEFT JOIN crop_profiles cp ON cp.id = t.crop_id
+       LEFT JOIN LATERAL (
+         SELECT * FROM logistics WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1
+       ) l ON true
+       WHERE t.farmer_id = $1 ORDER BY t.created_at DESC`,
       [farmer_id]
     );
     return result.rows;

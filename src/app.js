@@ -19,10 +19,11 @@ const rateLimiter = require('./middleware/rateLimiter');
 const { CORS_ORIGINS, IS_PRODUCTION } = require('./config/env');
 
 const app = express();
+const isLocalBrowserOrigin = (origin) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin || '');
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || CORS_ORIGINS.includes(origin) || (!IS_PRODUCTION && CORS_ORIGINS.length === 0)) {
+    if (!origin || CORS_ORIGINS.includes(origin) || (!IS_PRODUCTION && isLocalBrowserOrigin(origin))) {
       return callback(null, true);
     }
     return callback(new Error('Origin is not allowed by CORS'));

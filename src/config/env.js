@@ -21,6 +21,7 @@ module.exports = {
   SERVICE_KEYS: {
     advisory: process.env.ADVISORY_SERVICE_KEY,
     insight: process.env.INSIGHT_SERVICE_KEY,
+    iot_rover: process.env.IOT_ROVER_SERVICE_KEY,
     oracle: process.env.ORACLE_SERVICE_KEY,
   },
 };

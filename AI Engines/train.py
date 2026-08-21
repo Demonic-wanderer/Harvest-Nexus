@@ -132,7 +132,12 @@ def train(dataset_dir, epochs, batch_size, output_path):
         history.append({"epoch": epoch, "loss": round(epoch_loss, 4), "accuracy": accuracy})
         print(f"epoch {epoch}/{epochs} loss={epoch_loss:.4f} acc={accuracy:.2f}%")
 
-    torch.save({"class_names": class_names, "model_state": model.state_dict()}, output_path)
+    torch.save({
+        "format_version": 1,
+        "architecture": "mobilenet_v2",
+        "class_names": class_names,
+        "model_state": model.state_dict(),
+    }, output_path)
     metrics = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset": dataset_dir,

@@ -20,10 +20,13 @@ class SessionController extends ChangeNotifier {
   Map<String, dynamic>? advisory;
   Map<String, dynamic>? market;
   Map<String, dynamic>? weather;
+  Map<String, dynamic>? telemetry;
   Map<String, dynamic>? disease;
   Map<String, dynamic>? scanResult;
   List<dynamic> buyers = [];
   List<dynamic> mandis = [];
+  List<dynamic> transporters = [];
+  List<dynamic> transactions = [];
   List<Map<String, dynamic>> communityPosts = [
     {
       'farmer': 'Ramesh Kumar (Indore)',
@@ -162,10 +165,13 @@ class SessionController extends ChangeNotifier {
     advisory = null;
     market = null;
     weather = null;
+    telemetry = null;
     disease = null;
     scanResult = null;
     buyers = [];
     mandis = [];
+    transporters = [];
+    transactions = [];
     await _persist();
     notifyListeners();
   }
@@ -207,7 +213,7 @@ class SessionController extends ChangeNotifier {
           (await _api.get(
             '/api/buyer/crop/$cropName',
             token: token,
-            query: {'location': region},
+            query: {'lat': '${farm?['latitude'] ?? ''}', 'lon': '${farm?['longitude'] ?? ''}'},
           ))['buyers'] ??
               const [],
         );
@@ -215,9 +221,29 @@ class SessionController extends ChangeNotifier {
         buyers = [];
       }
       try {
-        mandis = List<dynamic>.from((await _api.get('/api/mandi', token: token))['mandis'] ?? const []);
+        mandis = List<dynamic>.from((await _api.get(
+          '/api/mandi',
+          token: token,
+          query: {'lat': '${farm?['latitude'] ?? ''}', 'lon': '${farm?['longitude'] ?? ''}'},
+        ))['mandis'] ?? const []);
       } catch (_) {
         mandis = [];
+      }
+      try {
+        transporters = List<dynamic>.from((await _api.get('/api/logistics/transporters', token: token))['transporters'] ?? const []);
+        transactions = List<dynamic>.from((await _api.get('/api/transaction/farmer/$userId', token: token))['transactions'] ?? const []);
+      } catch (_) {
+        transporters = [];
+        transactions = [];
+      }
+      if (farm != null) {
+        try {
+          final latestTelemetry = await _api.get('/api/telemetry/latest/${farm!['id']}', token: token);
+          final payload = latestTelemetry['telemetry'];
+          telemetry = payload is Map ? Map<String, dynamic>.from(payload) : null;
+        } catch (_) {
+          telemetry = null;
+        }
       }
       if (crop != null) {
         try {
@@ -237,26 +263,74 @@ class SessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> scanLeaf(String filename, List<int> bytes) async {
+  Future<bool> scanLeaf(String filename, List<int> bytes, {required bool hindi}) async {
     busy = true;
     error = null;
     notifyListeners();
     try {
-      scanResult = await _api.predictLeaf(filename, bytes);
-      if (crop != null && token != null) {
+      if (farm == null || crop == null) {
+        throw ApiException('Create or select a farm and crop before scanning a leaf');
+      }
+      final assessment = await _api.assessLeaf(
+        filename: filename,
+        bytes: bytes,
+        crop: crop!['crop_name']?.toString() ?? 'Tomato',
+        cropId: crop!['id'].toString(),
+        farmId: farm!['id'].toString(),
+        landSizeAcres: double.tryParse('${farm!['land_size_acres'] ?? ''}') ?? 1.0,
+        hindi: hindi,
+      );
+      final vision = assessment['vision'];
+      if (vision is! Map) throw ApiException('Oracle returned no disease result');
+      scanResult = {
+        ...Map<String, dynamic>.from(vision),
+        'treatments': assessment['recommendations'] ?? vision['treatments'],
+        'farm_health_score': assessment['farm_health_score'],
+      };
+      disease = Map<String, dynamic>.from(vision);
+
+      // Local Oracle instances without service keys cannot sign their Forge
+      // writes. The authenticated app completes the same persistence path.
+      if (assessment['forge_persisted'] != true && token != null) {
         await _api.post(
           '/api/disease/predict-result',
           {
             'crop_id': crop!['id'],
             'image_url': filename,
-            'disease_name': scanResult!['disease'] ?? scanResult!['display_name'],
-            'confidence': scanResult!['confidence'],
-            'severity': scanResult!['severity'],
+            'disease_name': vision['disease'] ?? vision['display_name'],
+            'confidence': vision['confidence'],
+            'severity': vision['severity'],
           },
           token: token,
         );
-        disease = scanResult;
       }
+      if (assessment['advisory_forge_persisted'] != true && token != null) {
+        final rawAdvisory = assessment['advisory'];
+        final recommendations = rawAdvisory is Map ? List<dynamic>.from(rawAdvisory['recommendations'] ?? const []) : const <dynamic>[];
+        String? adviceFor(String category) {
+          final advice = recommendations
+            .whereType<Map>()
+            .where((item) => item['category'] == category)
+            .map((item) => item['action']?.toString() ?? '')
+            .where((text) => text.isNotEmpty)
+            .join(' ');
+          return advice.isEmpty ? null : advice;
+        }
+        await _api.post(
+          '/api/advisory',
+          {
+            'farm_id': farm!['id'],
+            'crop_id': crop!['id'],
+            'irrigation_advice': adviceFor('irrigation'),
+            'fertilizer_advice': adviceFor('nutrient'),
+            'treatment_plan': adviceFor('disease') ?? scanResult!['treatments']?.toString(),
+            'priority_level': rawAdvisory is Map ? rawAdvisory['priority_level'] : 'MEDIUM',
+            'farm_health_score': assessment['farm_health_score'],
+          },
+          token: token,
+        );
+      }
+      await refreshDashboard();
       return true;
     } catch (err) {
       error = err.toString();

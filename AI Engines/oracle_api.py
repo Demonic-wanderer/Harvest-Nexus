@@ -1,21 +1,25 @@
 import os
-import shutil
 import sys
 import tempfile
 from typing import Optional
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(ENGINE_DIR)
+load_dotenv(os.path.join(REPO_ROOT, ".env"))
 if ENGINE_DIR not in sys.path:
     sys.path.insert(0, ENGINE_DIR)
 
-from disease_detection import predict_disease
+from disease_detection import ModelUnavailableError, predict_disease
 from multimodel import analyze_multimodal, forecast_harvest_volume
 
 app = FastAPI(title="Harvest Nexus Oracle - AI & Disease Intelligence Engine")
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,14 +56,54 @@ class MultimodalRequest(BaseModel):
     humidity: Optional[float] = None
     rain_expected: Optional[str] = None
     crop_id: Optional[str] = None
+    farm_id: Optional[str] = None
     persist_to_forge: bool = False
+
+
+def _api_error(status_code: int, code: str, message: str):
+    raise HTTPException(status_code=status_code, detail={"code": code, "message": message})
+
+
+def _model_ready() -> bool:
+    """Verify the checkpoint exists without paying the model-load cost on health checks."""
+    return os.path.exists(os.path.join(ENGINE_DIR, "mobilenetv2_disease.pth"))
+
+
+async def _save_image_upload(file: UploadFile) -> str:
+    if file.content_type and file.content_type.lower() not in ALLOWED_IMAGE_TYPES:
+        _api_error(415, "unsupported_image_type", "Use a JPEG, PNG, or WebP leaf photograph.")
+
+    payload = await file.read(MAX_IMAGE_BYTES + 1)
+    if not payload:
+        _api_error(400, "empty_image", "The selected image is empty. Choose another leaf photograph.")
+    if len(payload) > MAX_IMAGE_BYTES:
+        _api_error(413, "image_too_large", "Image must be 10 MB or smaller.")
+
+    suffix = os.path.splitext(file.filename or "leaf.jpg")[1].lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+        suffix = ".jpg"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(payload)
+        return tmp.name
+
+
+def _raise_scan_error(exc: Exception):
+    if isinstance(exc, ModelUnavailableError):
+        _api_error(503, "model_unavailable", str(exc))
+    if isinstance(exc, ValueError):
+        _api_error(400, "invalid_image", "This is not a readable leaf image. Retake a clear photo and try again.")
+    if isinstance(exc, FileNotFoundError):
+        _api_error(404, "image_not_found", str(exc))
+    raise exc
 
 
 @app.get("/health")
 def health():
     return {
-        "status": "ok",
+        "status": "ok" if _model_ready() else "degraded",
         "service": "oracle",
+        "model_ready": _model_ready(),
+        "max_upload_mb": MAX_IMAGE_BYTES // (1024 * 1024),
         "modules": ["disease_vision_mobilenetv2", "multimodal_health_score", "harvest_yield_forecaster"],
     }
 
@@ -68,24 +112,17 @@ def health():
 def predict(req: PredictRequest):
     try:
         return predict_disease(req.image_path)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (FileNotFoundError, ValueError, ModelUnavailableError) as exc:
+        _raise_scan_error(exc)
 
 
 @app.post("/predict-upload")
 async def predict_upload(file: UploadFile = File(...)):
-    suffix = os.path.splitext(file.filename or "leaf.jpg")[1] or ".jpg"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        shutil.copyfileobj(file.file, tmp)
-        path = tmp.name
+    path = await _save_image_upload(file)
     try:
         return predict_disease(path)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (FileNotFoundError, ValueError, ModelUnavailableError) as exc:
+        _raise_scan_error(exc)
     finally:
         if os.path.exists(path):
             os.remove(path)
@@ -120,12 +157,11 @@ def assess(req: MultimodalRequest):
             rain_expected=req.rain_expected,
             land_size_acres=req.land_size_acres or 1.0,
             crop_id=req.crop_id,
+            farm_id=req.farm_id,
             persist_to_forge=req.persist_to_forge,
         )
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (FileNotFoundError, ValueError, ModelUnavailableError) as exc:
+        _raise_scan_error(exc)
 
 
 @app.post("/assess-upload")
@@ -144,13 +180,11 @@ async def assess_upload(
     humidity: Optional[float] = Form(None),
     rain_expected: Optional[str] = Form(None),
     crop_id: Optional[str] = Form(None),
+    farm_id: Optional[str] = Form(None),
     persist_to_forge: bool = Form(False),
 ):
     """Convenience multipart endpoint for mobile uploads combining image + field telemetry."""
-    suffix = os.path.splitext(file.filename or "leaf.jpg")[1] or ".jpg"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        shutil.copyfileobj(file.file, tmp)
-        path = tmp.name
+    path = await _save_image_upload(file)
 
     try:
         return analyze_multimodal(
@@ -168,12 +202,11 @@ async def assess_upload(
             rain_expected=rain_expected,
             land_size_acres=land_size_acres,
             crop_id=crop_id,
+            farm_id=farm_id,
             persist_to_forge=persist_to_forge,
         )
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (FileNotFoundError, ValueError, ModelUnavailableError) as exc:
+        _raise_scan_error(exc)
     finally:
         if os.path.exists(path):
             os.remove(path)

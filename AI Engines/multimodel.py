@@ -13,6 +13,8 @@ if REPO_ROOT not in sys.path:
 from disease_detection import predict_disease
 from disease_mapping import get_crop_base_yield
 from shared.forge_client import ForgeClientError, submit_disease_prediction
+from advisory_engine.advisory import generate_advisory
+from advisory_engine.schemas import AdvisoryRequest
 
 
 def _clamp(value, low=0, high=100):
@@ -170,7 +172,7 @@ def compute_farm_health_score(vision, soil_moisture, soil_ph, nitrogen, phosphor
 
 def analyze_multimodal(image_path, crop, growth_stage, soil_moisture, soil_temperature, soil_ph,
                       nitrogen, phosphorus, potassium, air_temperature, humidity, rain_expected,
-                      land_size_acres=1.0, crop_id=None, persist_to_forge=False):
+                      land_size_acres=1.0, crop_id=None, farm_id=None, persist_to_forge=False):
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Crop image '{image_path}' not found.")
 
@@ -225,19 +227,39 @@ def analyze_multimodal(image_path, crop, growth_stage, soil_moisture, soil_tempe
         "soil_temperature": _to_float(soil_temperature),
     }
 
+    disease_id = None
     if persist_to_forge and crop_id:
         try:
-            submit_disease_prediction({
+            forge_response = submit_disease_prediction({
                 "crop_id": crop_id,
                 "image_url": image_path,
                 "disease_name": vision["disease"],
                 "confidence": vision["confidence"],
                 "severity": vision["severity"],
             })
+            disease_id = (((forge_response or {}).get("data") or {}).get("record") or {}).get("id")
             result["forge_persisted"] = True
         except ForgeClientError as exc:
             result["forge_persisted"] = False
             result["forge_error"] = str(exc)
+
+    # Akasha's rule engine turns the same scan and sensor context into the
+    # dashboard advisory.  When farm_id is supplied it also persists that row.
+    if farm_id:
+        advisory = generate_advisory(AdvisoryRequest(
+            crop=crop,
+            crop_stage=growth_stage,
+            land_size_acres=land_size_acres or 1.0,
+            farm_id=farm_id,
+            crop_id=crop_id,
+            disease_id=disease_id,
+            persist_to_forge=persist_to_forge,
+            disease={"name": vision["disease"], "confidence": vision["confidence"], "severity": vision["severity"]},
+            soil={"moisture": soil_moisture, "ph": soil_ph, "nitrogen": nitrogen, "phosphorus": phosphorus, "potassium": potassium},
+            weather={"temperature": air_temperature or 30, "humidity": humidity or 60, "rain_probability": 0},
+        ))
+        result["advisory"] = advisory
+        result["advisory_forge_persisted"] = advisory.get("forge_persisted", False)
 
     return result
 

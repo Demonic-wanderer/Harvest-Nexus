@@ -136,6 +136,23 @@ CREATE TABLE IF NOT EXISTS logistics (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- TELEMETRY: durable sensor/rover readings used by the advisory and dashboard.
+CREATE TABLE IF NOT EXISTS telemetry (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    farm_id UUID NOT NULL REFERENCES farm_profiles(id) ON DELETE CASCADE,
+    soil_moisture DECIMAL(5,2),
+    soil_temperature DECIMAL(5,2),
+    soil_ph DECIMAL(4,2),
+    nitrogen DECIMAL(7,2),
+    phosphorus DECIMAL(7,2),
+    potassium DECIMAL(7,2),
+    ambient_temp DECIMAL(5,2),
+    humidity DECIMAL(5,2),
+    rain_probability DECIMAL(5,2),
+    anomalies JSONB NOT NULL DEFAULT '[]'::jsonb,
+    recorded_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_farm_profiles_farmer ON farm_profiles(farmer_id);
 CREATE INDEX IF NOT EXISTS idx_crop_profiles_farm ON crop_profiles(farm_id);
@@ -143,6 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_disease_history_crop ON disease_history(crop_id);
 CREATE INDEX IF NOT EXISTS idx_advisory_history_farm ON advisory_history(farm_id);
 CREATE INDEX IF NOT EXISTS idx_market_data_crop_region ON market_data(crop_name, region);
 CREATE INDEX IF NOT EXISTS idx_transactions_farmer ON transactions(farmer_id);
+CREATE INDEX IF NOT EXISTS idx_telemetry_farm_recorded ON telemetry(farm_id, recorded_at DESC);
 
 ALTER TABLE buyers ADD COLUMN IF NOT EXISTS latitude DECIMAL(9,6);
 ALTER TABLE buyers ADD COLUMN IF NOT EXISTS longitude DECIMAL(9,6);
