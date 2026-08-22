@@ -884,100 +884,6 @@ class InfoCard extends StatelessWidget {
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(15),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 25),
-
-            SectionTitle(
-              title: T.get('disease', hindi),
-            ),
-
-            const SizedBox(height: 10),
-
-            DiseaseSummaryCard(hindi: hindi),
-
-            const SizedBox(height: 25),
-
-            SectionTitle(
-              title: T.get('market', hindi),
-            ),
-
-            const SizedBox(height: 10),
-
-            MarketSummaryCard(hindi: hindi),
-
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// ACTION CARD
-// ============================================================
-
-class ActionCard extends StatelessWidget {
-  final String icon;
-  final String title;
-  final String subtitle;
-
-  const ActionCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      elevation: 0,
-      child: ListTile(
-        leading: Text(
-          icon,
-          style: const TextStyle(fontSize: 26),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-        ),
-        subtitle: Text(subtitle),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// INFO CARD
-// ============================================================
-
-class InfoCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-
-  const InfoCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(15),
         child: Column(
           children: [
             Icon(
@@ -1170,30 +1076,132 @@ class _DiseaseScreenState extends State<DiseaseScreen> {
     }
     return hindi ? 'स्कैन पूरा नहीं हो सका। कृपया फिर कोशिश करें।' : 'Scan could not be completed. Please try again.';
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final hindi = widget.hindi;
+    final session = context.watch<SessionController>();
+    final result = session.scanResult ?? session.disease;
+    final confidence = ((result?['confidence'] as num?)?.toDouble() ?? 0) / 100.0;
+    final treatments = result?['treatments'];
+
+    // Extract values that cause Dart ternary-vs-null-aware parse ambiguity
+    final displayName = hindi
+        ? (result?['display_name_hi']?.toString())
+        : (result?['display_name']?.toString());
+    final diseaseName = displayName
+        ?? result?['disease_name']?.toString()
+        ?? (hindi ? 'अभी कोई पत्ती स्कैन नहीं हुई' : 'No leaf scanned yet');
+    final diagnosticAlert = hindi
+        ? (result?['diagnostic_alert_hi']?.toString())
+        : (result?['diagnostic_alert']?.toString());
+    final treatmentList = hindi ? (result?['treatments_hi']) : treatments;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(T.get('disease', hindi))),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (previewBytes != null)
+              Container(
+                height: 200,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(
+                    image: MemoryImage(previewBytes!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _pick(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt),
+                    label: Text(T.get('scanLeaf', hindi)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pick(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library),
+                    label: Text(T.get('uploadLeaf', hindi)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF2E7D32),
+                      side: const BorderSide(color: Color(0xFF2E7D32)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              T.get('demoPresets', hindi),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  label: Text(T.get('earlyBlightPreset', hindi)),
+                  onPressed: () => _loadPreset('early_blight', 'Early Blight'),
+                ),
+                ActionChip(
+                  label: Text(T.get('lateBlightPreset', hindi)),
+                  onPressed: () => _loadPreset('late_blight', 'Late Blight'),
+                ),
+                ActionChip(
+                  label: Text(T.get('bacterialSpotPreset', hindi)),
+                  onPressed: () => _loadPreset('bacterial_spot', 'Bacterial Spot'),
+                ),
+                ActionChip(
+                  label: Text(T.get('healthyPreset', hindi)),
+                  onPressed: () => _loadPreset('healthy', 'Healthy Leaf'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(T.get('diseaseDetected', hindi), style: const TextStyle(color: Colors.grey)),
                     const SizedBox(height: 5),
                     Text(
-                      (hindi ? result?['display_name_hi'] : result?['display_name'])?.toString()
-                          ?? result?['disease_name']?.toString()
-                          ?? (hindi ? 'अभी कोई पत्ती स्कैन नहीं हुई' : 'No leaf scanned yet'),
+                      diseaseName,
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 15),
                     LinearProgressIndicator(value: confidence.clamp(0, 1)),
                     const SizedBox(height: 8),
                     Text('${T.get('confidence', hindi)}: ${result?['confidence'] ?? '--'}%'),
-                    if (result?['severity'] != null) Text('${hindi ? 'गंभीरता' : 'Severity'}: ${result!['severity']}'),
-                    if (result?['diagnostic_alert'] != null) ...[
+                    if (result?['severity'] != null)
+                      Text('${hindi ? 'गंभीरता' : 'Severity'}: ${result!['severity']}'),
+                    if (diagnosticAlert != null) ...[
                       const SizedBox(height: 10),
                       Text(
-                        (hindi ? result?['diagnostic_alert_hi'] : result?['diagnostic_alert'])?.toString() ?? '',
+                        diagnosticAlert,
                         style: const TextStyle(color: Colors.deepOrange),
                       ),
                     ],
                     const SizedBox(height: 20),
-                    if ((hindi ? result?['treatments_hi'] : treatments) is List)
-                      ...List<dynamic>.from(hindi ? result?['treatments_hi'] : treatments).map((item) => Text('• $item'))
+                    if (treatmentList is List)
+                      ...List<dynamic>.from(treatmentList).map((item) => Text('• $item'))
                     else
                       Text(hindi ? 'उपचार सलाह पाने के लिए पत्ती स्कैन करें।' : 'Scan a leaf to get Oracle treatment advice.'),
                   ],
